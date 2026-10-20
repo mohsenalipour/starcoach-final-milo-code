@@ -23,6 +23,7 @@ function continuationFrom(run) {
   if (!run) return null;
   return {
     runId: run.id,
+    ...(run.conversationId ? { conversationId: run.conversationId } : {}),
     task: String(run.task || "").slice(0, 6000),
     summary: String(run.summary || run.plan?.summary || "").slice(0, 2400),
     changedFiles: (run.changes || []).slice(0, 40).map((c) => c.path),

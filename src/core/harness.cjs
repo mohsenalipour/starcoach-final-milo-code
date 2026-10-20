@@ -130,8 +130,10 @@ class Harness extends EventEmitter {
     text(task, 6000, "درخواست");
     assert(task.trim().length >= 8, "درخواست را کمی کامل‌تر بنویس.");
     this.controller = new AbortController();
+    const runId = id();
     this.state = {
-      id: id(),
+      id: runId,
+      conversationId: this.continuation?.conversationId || runId,
       mode: this.mode,
       connection: this.connection,
       continuation: this.continuation,

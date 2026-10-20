@@ -3,9 +3,10 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { assert, id, redactValue } = require("./protocol.cjs");
 class RunStore {
-  constructor(root, { secrets = [] } = {}) {
+  constructor(root, { secrets = [], database = null } = {}) {
     this.root = root;
     this.secrets = secrets;
+    this.database = database;
     this.queue = Promise.resolve();
   }
   clean(value) {
@@ -16,6 +17,10 @@ class RunStore {
     return path.join(this.root, runId + ".json");
   }
   async save(state) {
+    if (this.database) {
+      this.database.saveRun(this.clean(state), this.secrets);
+      return;
+    }
     const target = this.file(state.id),
       data = this.clean(state);
     this.queue = this.queue
@@ -29,10 +34,12 @@ class RunStore {
     return this.queue;
   }
   async load(runId) {
+    if (this.database) return this.clean(this.database.loadRun(runId));
     await this.queue;
     return JSON.parse(await fs.readFile(this.file(runId), "utf8"));
   }
   async list() {
+    if (this.database) return this.database.listRuns();
     await this.queue;
     await fs.mkdir(this.root, { recursive: true });
     const result = [];

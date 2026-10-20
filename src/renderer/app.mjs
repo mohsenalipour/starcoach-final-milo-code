@@ -1,6 +1,7 @@
 import { icon, hydrateIcons } from "./icons.mjs";
 import { ModelControls } from "./model-controls.mjs";
 import { ProjectTools } from "./project-tools.mjs";
+import { DataControls } from "./data-controls.mjs";
 const $ = (id) => document.getElementById(id),
   api = window.milo;
 const labels = {
@@ -13,6 +14,7 @@ const labels = {
   reviewing: "بازبینی نهایی",
   completed: "تمام شد",
   stopped: "متوقف‌شده",
+  interrupted: "قطع‌شده هنگام خروج",
   needs_attention: "نیاز به بررسی",
 };
 const active = new Set([
@@ -86,7 +88,10 @@ const modelControls = new ModelControls({
     modelControls.update(value);
     render();
   },
-  onSelection: () => render(),
+  onSelection: () => {
+    render();
+    scheduleDraft();
+  },
 });
 const projectTools = new ProjectTools({
   call,
@@ -98,6 +103,13 @@ const projectTools = new ProjectTools({
     closeWorkbench();
     render();
   },
+});
+const dataControls = new DataControls({
+  call,
+  guard,
+  toast,
+  onProject: adopt,
+  flushDraft: saveDraft,
 });
 function busy() {
   return state && !state.readOnly && active.has(state.status);
@@ -125,6 +137,7 @@ function closeEditor() {
 }
 async function adopt(result) {
   if (!result) return;
+  clearTimeout(draftTimer);
   state = null;
   page = "task";
   closeWorkbench();
@@ -135,17 +148,24 @@ async function adopt(result) {
   modelControls.update(settings, result.selection || settings.defaultSelection);
   $("remember-model").checked = true;
   closeEditor();
-  $("task").value = result.task || "";
+  restoreDraft(result.draft);
+  if (result.task) $("task").value = result.task;
   lastCommand = null;
   render();
-  await Promise.all([refreshFiles(), refreshHistory()]);
+  await Promise.all([
+    refreshFiles(),
+    refreshHistory(),
+    refreshThread(result.threadRunId || null),
+  ]);
   if (mode === "live") modelControls.autoFetch();
   if (result.task) toast("پروژهٔ نمونهٔ تازه آماده شد. «شروع کار» را بزن.");
 }
 async function demo() {
+  await saveDraft();
   await adopt(await call("createDemo"));
 }
 async function choose() {
+  await saveDraft();
   await adopt(await call("chooseProject"));
 }
 function render() {
@@ -181,6 +201,8 @@ function render() {
   $("choose-project").disabled = isBusy;
   $("demo").disabled = isBusy;
   $("open-settings").disabled = isBusy;
+  $("open-data").disabled = isBusy;
+  renderThread();
   $("submit-task").disabled = isBusy || readonly;
   $("task").disabled = isBusy || readonly;
   $("model-mode").hidden = !demoProject;
@@ -860,49 +882,119 @@ async function inspectSkill() {
   target.append(details, el("p", "muted", "SHA-256: " + preview.digest));
   $("skill-dialog").showModal();
 }
-async function refreshHistory() {
-  historyItems = await call("history");
+let historyTicket = 0,
+  historyHasMore = false,
+  historyTimer,
+  threadAnchor = null,
+  threadTurns = [],
+  threadTicket = 0;
+let draftTimer,
+  draftPending = Promise.resolve();
+function saveDraft() {
+  clearTimeout(draftTimer);
+  if (busy() || state?.readOnly) return draftPending;
+  const data = {
+    root: project?.root || null,
+    text: $("task").value,
+    selection: modelControls.getSelection(),
+    remember: $("remember-model").checked,
+  };
+  draftPending = draftPending
+    .catch(() => {})
+    .then(() => call("saveDraft", data));
+  return draftPending;
+}
+function scheduleDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => void guard(saveDraft), 350);
+}
+window.miloFlushDraft = saveDraft;
+function restoreDraft(draft) {
+  $("task").value = draft?.text || "";
+  $("remember-model").checked = draft?.remember !== false;
+  if (draft?.selection && !state?.readOnly)
+    modelControls.update(settings, draft.selection);
+}
+async function refreshThread(runId) {
+  threadAnchor = runId || null;
+  const ticket = ++threadTicket;
+  const turns = runId ? await call("thread", runId) : [];
+  if (ticket !== threadTicket) return;
+  threadTurns = turns;
+  renderThread();
+}
+function renderThread() {
+  const target = $("thread-view");
+  const turns = threadTurns.filter((turn) => turn.id !== state?.id);
+  target.hidden = !turns.length;
+  target.replaceChildren();
+  if (!turns.length) return;
+  const details = el("details");
+  details.append(
+    el("summary", "", fa(turns.length) + " درخواست دیگر در این گفتگو"),
+  );
+  for (const turn of turns) {
+    const item = el("article", "thread-turn");
+    item.append(el("p", "", turn.task));
+    if (turn.answer) item.append(el("p", "thread-answer", turn.answer));
+    item.append(
+      btn("دیدن مراحل و تست این درخواست", "quiet", () => openSavedRun(turn.id)),
+    );
+    details.append(item);
+  }
+  target.append(details);
+}
+async function openSavedRun(runId) {
+  await saveDraft();
+  state = await call("loadRun", runId);
+  const data = await call("boot");
+  page = "task";
+  mode = state.mode;
+  demoProject = mode === "offline-demo";
+  closeWorkbench();
+  closeEditor();
+  setProject(data.project);
+  projectTools.adopt(data.resources);
+  modelControls.update(settings, data.selection);
+  view = "review";
+  render();
+  setWork("changes", { reveal: false });
+  await Promise.all([refreshThread(runId), refreshFiles(), refreshHistory()]);
+  rebuildTerminal();
+}
+async function refreshHistory({ append = false } = {}) {
+  const ticket = ++historyTicket;
+  const result = await call("conversations", {
+    query: $("history-search").value.trim(),
+    offset: append ? historyItems.length : 0,
+  });
+  if (ticket !== historyTicket) return;
+  historyItems = append ? [...historyItems, ...result.items] : result.items;
+  historyHasMore = result.hasMore;
   renderHistory();
 }
 function renderHistory() {
-  const query = $("history-search").value.trim().toLocaleLowerCase();
-  const rows = historyItems.filter((r) =>
-    (r.title + " " + r.root + " " + (r.connection?.model || ""))
-      .toLocaleLowerCase()
-      .includes(query),
-  );
   const target = $("history");
   target.replaceChildren();
-  if (!rows.length)
+  $("history-more").hidden = !historyHasMore;
+  if (!historyItems.length)
     target.append(
       el(
         "p",
         "muted empty-note",
-        query
-          ? "کاری با این عبارت پیدا نشد."
-          : "اولین کارت را از کادر روبه‌رو شروع کن.",
+        $("history-search").value.trim()
+          ? "گفتگویی با این عبارت پیدا نشد."
+          : "اولین گفتگو را از کادر روبه‌رو شروع کن.",
       ),
     );
-  for (const run of rows) {
+  for (const run of historyItems) {
     const b = btn(
       "",
-      "history-row" + (state?.id === run.id ? " selected" : ""),
-      async () => {
-        state = await call("loadRun", run.id);
-        page = "task";
-        mode = state.mode;
-        closeWorkbench();
-        closeEditor();
-        setProject({ name: run.root.split(/[\\/]/).at(-1), root: run.root });
-        projectTools.adopt(null);
-        view = "review";
-        render();
-        setWork("changes", { reveal: false });
-        await refreshFiles();
-        rebuildTerminal();
-        await refreshHistory();
-        await projectTools.refresh();
-      },
+      "history-row" +
+        ((state?.conversationId || threadAnchor) === run.conversationId
+          ? " selected"
+          : ""),
+      () => openSavedRun(run.id),
     );
     b.append(el("strong", "", run.title));
     if (run.connection)
@@ -915,7 +1007,11 @@ function renderHistory() {
       );
     const meta = el("small");
     meta.append(
-      el("span", "", labels[run.status] || run.status),
+      el(
+        "span",
+        "",
+        fa(run.turnCount) + " درخواست · " + (labels[run.status] || run.status),
+      ),
       el(
         "span",
         "",
@@ -1007,6 +1103,7 @@ document.querySelectorAll("[data-open-work]").forEach((b) => {
 document.querySelectorAll("[data-prompt]").forEach((b) => {
   b.onclick = () => {
     $("task").value = b.dataset.prompt;
+    scheduleDraft();
     $("task").focus();
   };
 });
@@ -1018,6 +1115,7 @@ $("new-project").onclick = () => {
 $("project-form").onsubmit = (event) => {
   event.preventDefault();
   void guard(async () => {
+    await saveDraft();
     await adopt(
       await call("createProject", { name: $("project-title").value }),
     );
@@ -1027,6 +1125,7 @@ $("project-form").onsubmit = (event) => {
 };
 $("continue-run").onclick = () =>
   guard(async () => {
+    await saveDraft();
     await adopt(await call("continueRun", state.id));
     $("task").focus();
     toast("همان پروژه آماده است؛ درخواست بعدی را بنویس.");
@@ -1037,7 +1136,9 @@ $("demo").onclick = () => guard(demo);
 $("welcome-demo").onclick = () => guard(demo);
 $("new-task").onclick = () =>
   guard(async () => {
-    await call("newTask");
+    await saveDraft();
+    await call("newTask", { fresh: true });
+    await refreshThread(null);
     state = null;
     page = "task";
     closeWorkbench();
@@ -1054,7 +1155,13 @@ $("new-task").onclick = () =>
     await refreshFiles();
   });
 $("refresh-history").onclick = () => guard(refreshHistory);
-$("history-search").oninput = () => renderHistory();
+$("history-search").oninput = () => {
+  clearTimeout(historyTimer);
+  historyTimer = setTimeout(() => void guard(refreshHistory), 250);
+};
+$("history-more").onclick = () => guard(() => refreshHistory({ append: true }));
+$("task").addEventListener("input", scheduleDraft);
+$("remember-model").addEventListener("change", scheduleDraft);
 $("refresh-files").onclick = () =>
   guard(async () => {
     if (editorFile) await openFile(editorFile.path);
@@ -1096,6 +1203,7 @@ $("task-form").onsubmit = (event) => {
     if ($("submit-task").disabled) return;
     const task = $("task").value.trim();
     if (task.length < 8) throw Error("درخواست را کمی کامل‌تر بنویس.");
+    await saveDraft();
     $("submit-task").disabled = true;
     view = "plan";
     try {
@@ -1114,6 +1222,7 @@ $("task-form").onsubmit = (event) => {
         selection: modelControls.getSelection(),
         remember: $("remember-model").checked,
       });
+      $("task").value = "";
     } finally {
       render();
     }
@@ -1157,6 +1266,8 @@ api.onState((next) => {
   state = next;
   if (lastRun !== next.id) {
     lastRun = next.id;
+    void guard(() => refreshThread(next.id));
+    void guard(refreshHistory);
     $("terminal").textContent = "";
     lastCommand = null;
   }
@@ -1203,8 +1314,19 @@ async function boot() {
   state = data.state;
   setProject(data.project);
   projectTools.adopt(data.resources || null);
+  restoreDraft(data.draft);
   renderSkills();
   render();
-  await Promise.all([refreshHistory(), refreshFiles()]);
+  await Promise.all([
+    refreshHistory(),
+    refreshFiles(),
+    refreshThread(state?.id || null),
+  ]);
+  if (state) rebuildTerminal();
+  if (data.notice) toast(data.notice);
+  else if (state?.interrupted)
+    toast(
+      "اجرای قبلی قطع شده بود؛ برای ادامه درخواست تازه بده. فرمانی خودکار تکرار نشد.",
+    );
 }
-void guard(boot);
+window.miloReady = guard(boot);

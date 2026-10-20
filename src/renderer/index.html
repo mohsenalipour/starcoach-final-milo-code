@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="layout.css" />
     <link rel="stylesheet" href="project-tools.css" />
+    <link rel="stylesheet" href="data-controls.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -49,7 +50,7 @@
           </button>
         </div>
         <div class="history-heading">
-          <span class="section-label">کارهای اخیر</span
+          <span class="section-label">گفتگوهای ذخیره‌شده</span
           ><button
             id="refresh-history"
             class="icon-button"
@@ -68,6 +69,9 @@
         <div id="history" class="history-list">
           <p class="empty-note">اولین کارت را از کادر روبه‌رو شروع کن.</p>
         </div>
+        <button id="history-more" class="quiet history-more" hidden>
+          گفتگوهای بیشتر
+        </button>
         <div class="sidebar-foot">
           <button id="demo" class="nav-button">
             <i data-icon="play"></i> دموی آموزشی
@@ -77,7 +81,10 @@
             <i data-icon="settings"></i> تنظیمات مدل
             <span id="connection-dot" class="dot"></span>
           </button>
-          <div class="course-note"><span>Milo Code</span><span>v1.3</span></div>
+          <button id="open-data" class="nav-button">
+            <i data-icon="folder"></i> داده‌ها و پشتیبان
+          </button>
+          <div class="course-note"><span>Milo Code</span><span>v1.4</span></div>
         </div>
       </aside>
       <main class="main-shell">
@@ -161,6 +168,12 @@
                   <h2>چی می‌خوای بسازیم؟</h2>
                   <p>یک ایده، یک قابلیت تازه، یا کدی که به کمک نیاز دارد.</p>
                 </div>
+                <section
+                  id="thread-view"
+                  class="thread-view"
+                  aria-label="پیام‌های قبلی گفتگو"
+                  hidden
+                ></section>
                 <div id="request-summary" class="request-summary" hidden></div>
                 <div id="plan-view" class="view" hidden></div>
                 <div id="activity-view" class="view" hidden></div>
@@ -580,6 +593,38 @@
           شناسهٔ مدل هم در دسترس است.
         </p>
       </div>
+    </dialog>
+    <dialog id="data-dialog" class="modal data-dialog">
+      <div class="modal-heading">
+        <div>
+          <span class="eyebrow">LOCAL STORAGE</span>
+          <h2>داده‌ها و پشتیبان</h2>
+        </div>
+        <button class="icon-button" data-close="data-dialog" aria-label="بستن">
+          ×
+        </button>
+      </div>
+      <p id="database-summary" class="muted"></p>
+      <div id="database-counts" class="database-counts"></div>
+      <strong>محل دیتابیس</strong>
+      <p id="database-path" class="database-path" dir="ltr"></p>
+      <p id="migration-note" class="info-note"></p>
+      <div class="data-actions">
+        <button id="backup-data" class="primary">گرفتن پشتیبان</button>
+        <button id="restore-data" class="secondary">بازیابی پشتیبان</button>
+        <button id="check-database" class="secondary">بررسی سلامت</button>
+        <button id="open-data-folder" class="secondary">
+          باز کردن پوشهٔ داده‌ها
+        </button>
+      </div>
+      <p class="muted">
+        پشتیبان شامل تنظیمات، گفتگوها و مسیر پروژه‌هاست؛ فایل‌های خود پروژه‌ها
+        را جدا نگه دار. کلیدهای API رمز‌شده‌اند و بازیابی آن‌ها به همان حساب
+        ویندوز وابسته است.
+      </p>
+      <p id="data-result" class="form-result" role="status"></p>
+      <h3>پروژه‌های ذخیره‌شده</h3>
+      <div id="recent-projects" class="recent-projects"></div>
     </dialog>
     <dialog id="skill-dialog" class="modal">
       <div class="modal-heading">

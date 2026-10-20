@@ -18,6 +18,7 @@ const { DemoProvider, createDemo, demoTask } = require("./core/demo.cjs");
 const { SkillRegistry } = require("./core/skills.cjs");
 const { RunStore } = require("./core/store.cjs");
 const { Settings } = require("./core/settings.cjs");
+const { AppDatabase, readOnly } = require("./core/database.cjs");
 const { createProject, continuationFrom } = require("./core/projects.cjs");
 const { AppRuntime, localURL, launchOptions } = require("./core/runtime.cjs");
 const { assert, keys, text, redact } = require("./core/protocol.cjs");
@@ -28,6 +29,10 @@ const root = path.resolve(__dirname, ".."),
   renderer = path.join(__dirname, "renderer", "index.html"),
   rendererURL = pathToFileURL(renderer).href;
 let win,
+  database,
+  restoredState = null,
+  startupNotice = null,
+  dataBusy = false,
   settings,
   skills,
   store,
@@ -40,7 +45,7 @@ let win,
 let importing = null;
 const available = () =>
   assert(
-    !harness?.busy && !harness?.runner.child,
+    !dataBusy && !harness?.busy && !harness?.runner.child,
     "ابتدا اجرای فعلی را تمام یا متوقف کن و تا بسته‌شدن فرمان صبر کن.",
   );
 const send = (name, data) => {
@@ -61,8 +66,12 @@ function connect(provider, mode, connection = null) {
     secrets: settings.allSecrets(),
   });
   harness = current;
+  restoredState = null;
   current.on("state", (data) => {
-    if (harness === current) send("state", data);
+    if (harness === current) {
+      rememberSession(data.id);
+      send("state", data);
+    }
   });
   current.on("output", (data) => {
     if (harness === current) send("output", data);
@@ -84,8 +93,13 @@ async function select(rootPath, mode = "live") {
   harness = null;
   projectMode = mode;
   continuation = null;
+  restoredState = null;
+  const summary = await projectSummary();
+  database.rememberProject(workspace.root, summary.name, mode);
+  rememberSession(null);
   return {
-    project: await projectSummary(),
+    project: summary,
+    draft: database.draft(workspace.root),
     mode,
     selection: settings.forProject(workspace.root),
     resources: await resources(workspace),
@@ -125,20 +139,93 @@ function ipc(name, handler) {
     }
   });
 }
-function register() {
-  ipc("boot", async () => ({
+function rememberSession(runId) {
+  database.setSetting(
+    "session",
+    workspace ? { root: workspace.root, mode: projectMode, runId } : null,
+  );
+}
+async function restoreSession() {
+  workspace = null;
+  restoredState = null;
+  continuation = null;
+  const saved = database.getSetting("session");
+  if (!saved?.root) return;
+  try {
+    workspace = await Workspace.open(saved.root);
+    projectMode = saved.mode === "offline-demo" ? saved.mode : "live";
+    if (saved.runId) {
+      const run = await store.load(saved.runId);
+      if (run.root === workspace.root) {
+        restoredState = readOnly(run);
+        continuation = {
+          ...continuationFrom(run),
+          history: database.context(run.id),
+        };
+      }
+    }
+  } catch (error) {
+    startupNotice =
+      "فضای کار قبلی کامل باز نشد؛ اطلاعات در دیتابیس محفوظ است. " +
+      redact(error.message, settings.allSecrets());
+  }
+}
+async function bootData() {
+  const current = harness?.snapshot() || restoredState;
+  let selection = workspace
+    ? settings.forProject(workspace.root)
+    : settings.value.defaultSelection;
+  if (current?.readOnly && current.connection) {
+    try {
+      selection = settings.selection({
+        providerId: current.connection.providerId,
+        model: current.connection.model,
+      });
+    } catch {}
+  }
+  return {
     version: app.getVersion(),
     project: workspace ? await projectSummary() : null,
-    state: harness?.snapshot() || null,
+    state: current,
     settings: settings.public(),
-    selection: workspace
-      ? settings.forProject(workspace.root)
-      : settings.value.defaultSelection,
+    selection,
     mode: projectMode,
     skills: skills.list(),
     dataPath: app.getPath("userData"),
+    database: database.info(),
+    notice: startupNotice,
+    draft: database.draft(workspace?.root || null),
     resources: workspace ? await resources(workspace) : null,
-  }));
+  };
+}
+function register() {
+  ipc("boot", bootData);
+  require("./core/storage-ipc.cjs").registerStorage({
+    ipc,
+    database,
+    getWindow: () => win,
+    available,
+    setBusy: (value) => {
+      dataBusy = value;
+    },
+    quiesce: async () => {
+      await Promise.allSettled(
+        [...settings.requests.values()].map((r) => r.promise),
+      );
+      await settings.queue;
+      await store.queue;
+    },
+    reload: async () => {
+      await runtime.close();
+      harness = null;
+      await loadConfiguration();
+      runtime.secrets = settings.allSecrets();
+      await restoreSession();
+    },
+    dataPath: app.getPath("userData"),
+    dialog,
+    shell,
+  });
   ipc("resources", async (data) => resources(await viewedWorkspace(data)));
   ipc("openProjectFolder", async (data) => {
     const ws = await viewedWorkspace(data);
@@ -285,7 +372,10 @@ function register() {
     available();
     const saved = await store.load(runId);
     const selected = await select(saved.root);
-    continuation = continuationFrom(saved);
+    continuation = {
+      ...continuationFrom(saved),
+      history: database.context(saved.id),
+    };
     if (saved.connection) {
       try {
         selected.selection = settings.selection({
@@ -294,6 +384,8 @@ function register() {
         });
       } catch {}
     }
+    selected.threadRunId = saved.id;
+    rememberSession(saved.id);
     return selected;
   });
   ipc("listFiles", async () => {
@@ -350,6 +442,11 @@ function register() {
           };
     const h = connect(provider, data.mode, connection);
     void h.makePlan(data.task).catch((e) => h.fail(e));
+    database.saveDraft(workspace.root, {
+      text: "",
+      selection: { providerId: config.providerId, model: config.model },
+      remember: data.remember === true,
+    });
     return { started: true };
   });
   ipc("approvePlan", async (data) => {
@@ -369,30 +466,61 @@ function register() {
       await runtime.stop(workspace.root, application.id);
     return result;
   });
-  ipc("newTask", async () => {
+  ipc("newTask", async (data = {}) => {
     available();
-    if (harness?.state) continuation = continuationFrom(harness.state);
+    keys(data, ["fresh"]);
+    if (data.fresh) {
+      continuation = null;
+      const oldDraft = database.draft(workspace?.root || null);
+      database.saveDraft(workspace?.root || null, { ...oldDraft, text: "" });
+    } else {
+      const previous = harness?.state || restoredState;
+      if (previous)
+        continuation = {
+          ...continuationFrom(previous),
+          history: database.context(previous.id),
+        };
+    }
     harness = null;
+    restoredState = null;
+    rememberSession(null);
     return true;
   });
   ipc("history", async () => store.list());
+  ipc("conversations", async (data = {}) => database.conversations(data));
+  ipc("thread", async (runId) => database.thread(runId));
+  ipc("recentProjects", async () => database.projects());
+  ipc("openRecentProject", async (rootPath) => {
+    text(rootPath, 2000);
+    assert(
+      database.projects().some((p) => p.root === rootPath),
+      "پروژه در تاریخچه ثبت نشده است.",
+    );
+    return select(rootPath);
+  });
+  ipc("saveDraft", async (data) => {
+    assert(!dataBusy, "بازیابی داده‌ها در جریان است.");
+    keys(data, ["root", "text", "selection", "remember"]);
+    assert(
+      (workspace?.root || null) === data.root,
+      "پروژه عوض شده؛ پیش‌نویس قدیمی ذخیره نشد.",
+    );
+    text(data.text, 6000);
+    const selection = settings.selection(data.selection);
+    database.saveDraft(
+      data.root,
+      { text: data.text, selection, remember: data.remember === true },
+      settings.allSecrets(),
+    );
+    return true;
+  });
   ipc("loadRun", async (runId) => {
     available();
     const saved = await store.load(runId);
-    return {
-      ...saved,
-      readOnly: true,
-      approval: null,
-      interrupted: [
-        "planning",
-        "running",
-        "verifying",
-        "awaiting_approval",
-        "reviewing",
-        "correcting",
-        "awaiting_plan",
-      ].includes(saved.status),
-    };
+    await select(saved.root, saved.mode);
+    restoredState = readOnly(saved);
+    rememberSession(saved.id);
+    return restoredState;
   });
   ipc("exportRun", async (runId) => {
     const saved = await store.load(runId);
@@ -417,6 +545,7 @@ function register() {
     new ModelProvider(settings.config(selection)).ping(),
   );
   ipc("models", async (data) => {
+    assert(!dataBusy, "بازیابی داده‌ها در جریان است.");
     keys(data, ["providerId"]);
     const result = await settings.discover(data.providerId);
     return { ...result, settings: settings.public() };
@@ -460,9 +589,9 @@ async function saveSkillState() {
     })),
   );
 }
-async function init() {
+async function loadConfiguration() {
   const data = app.getPath("userData");
-  settings = new Settings(data, safeStorage);
+  settings = new Settings(data, safeStorage, { database });
   await settings.load({
     envFile: app.isPackaged ? undefined : path.join(root, ".env"),
   });
@@ -476,10 +605,19 @@ async function init() {
   }
   store = new RunStore(path.join(data, "runs"), {
     secrets: settings.allSecrets(),
+    database,
   });
+}
+async function init() {
+  const data = app.getPath("userData");
+  database = new AppDatabase(data);
+  await database.migrateLegacy();
+  database.recoverInterrupted();
+  await loadConfiguration();
   runtime = new AppRuntime({ secrets: settings.allSecrets() });
   runtime.on("change", (application) => send("application", application));
   runtime.on("output", (chunk) => send("appOutput", chunk));
+  await restoreSession();
   if (
     process.env.MILO_SMOKE === "1" &&
     process.env.MILO_SMOKE_RUNTIME === "1"
@@ -496,9 +634,10 @@ async function init() {
   );
   session.defaultSession.setPermissionCheckHandler(() => false);
   register();
+  const savedWindow = database.getSetting("window", {});
   win = new BrowserWindow({
-    width: 1440,
-    height: 950,
+    width: Math.max(1100, Math.min(2200, Number(savedWindow.width) || 1440)),
+    height: Math.max(720, Math.min(1400, Number(savedWindow.height) || 950)),
     minWidth: 1100,
     minHeight: 720,
     title: "Milo Code",
@@ -542,7 +681,19 @@ async function init() {
         await harness.stop();
         await harness.job;
       }
+      await win.webContents
+        .executeJavaScript("window.miloFlushDraft?.()")
+        .catch(() => {});
+      await settings.queue;
+      await store.queue;
+      const bounds = win.getNormalBounds();
+      database.setSetting("window", {
+        width: bounds.width,
+        height: bounds.height,
+        maximized: win.isMaximized(),
+      });
       await runtime.close();
+      database.close();
       closing = true;
       win.destroy();
     })().catch(() => {
@@ -550,7 +701,33 @@ async function init() {
     });
   });
   await win.loadFile(renderer);
+  if (savedWindow.maximized) win.maximize();
   win.show();
+  if (
+    process.env.MILO_SMOKE === "1" &&
+    process.env.MILO_SMOKE_STORAGE === "1"
+  ) {
+    const result =
+      await require("./core/persistence-smoke.cjs").desktopPersistence({
+        win,
+        database,
+        store,
+        restoreSession,
+      });
+    await fs.writeFile(
+      path.join(
+        data,
+        "persistence-" + process.env.MILO_STORAGE_PHASE + ".json",
+      ),
+      JSON.stringify(
+        { version: app.getVersion(), packaged: app.isPackaged, ...result },
+        null,
+        2,
+      ),
+    );
+    app.quit();
+    return;
+  }
   if (process.env.MILO_SMOKE === "1") {
     const status = await win.webContents.executeJavaScript(
       `window.milo.boot().then(packet => {

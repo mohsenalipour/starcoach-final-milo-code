@@ -5,9 +5,10 @@ const { assert, text, keys, id, hash } = require("./protocol.cjs");
 const { endpoint } = require("./provider.cjs");
 const { presets, fetchModels, catalogToken } = require("./catalog.cjs");
 class Settings {
-  constructor(root, safeStorage) {
+  constructor(root, safeStorage, { database = null } = {}) {
     this.root = root;
     this.safe = safeStorage;
+    this.database = database;
     this.file = path.join(root, "settings.json");
     this.value = {
       schemaVersion: 2,
@@ -40,7 +41,9 @@ class Settings {
   async load({ envFile } = {}) {
     let migrated = false;
     try {
-      const saved = JSON.parse(await fs.readFile(this.file, "utf8"));
+      const saved = this.database
+        ? this.database.getSetting("application", {})
+        : JSON.parse(await fs.readFile(this.file, "utf8"));
       if (saved.schemaVersion === 2 && Array.isArray(saved.providers)) {
         for (const preset of this.value.providers) {
           const item = saved.providers.find((p) => p.id === preset.id);
@@ -98,11 +101,12 @@ class Settings {
               this.safe.decryptString(Buffer.from(p.encryptedKey, "base64")),
             );
           } catch {
-            p.encryptedKey = null;
+            /* Keep the encrypted original if Windows cannot unlock it. */
           }
         }
-    } catch {
-      /* Missing or damaged settings leave usable defaults. */
+    } catch (error) {
+      if (this.database) throw error;
+      /* Missing or damaged legacy settings leave usable defaults. */
     }
     if (envFile && !this.allSecrets().length) {
       try {
@@ -132,7 +136,9 @@ class Settings {
         ? encryptedKey
           ? "encrypted"
           : "memory"
-        : "empty",
+        : encryptedKey
+          ? "unavailable"
+          : "empty",
     }));
     const current = providers.find(
       (p) => p.id === this.value.defaultSelection.providerId,
@@ -234,6 +240,7 @@ class Settings {
     }
     p.baseURL = baseURL;
     p.model = input.model.trim();
+    if (!newKey) p.encryptedKey = null;
     this.apiKeys.set(p.id, newKey);
     if (
       input.makeDefault ||
@@ -277,12 +284,18 @@ class Settings {
       p.encryptedKey =
         key && this.safe.isEncryptionAvailable()
           ? this.safe.encryptString(key).toString("base64")
-          : null;
+          : key
+            ? null
+            : p.encryptedKey;
       this.profile(p.id).encryptedKey = p.encryptedKey;
     }
     this.queue = this.queue
       .catch(() => {})
       .then(async () => {
+        if (this.database) {
+          this.database.setSetting("application", value);
+          return;
+        }
         await fs.mkdir(this.root, { recursive: true });
         const tmp = this.file + "." + id() + ".tmp";
         await fs.writeFile(tmp, JSON.stringify(value, null, 2), "utf8");
