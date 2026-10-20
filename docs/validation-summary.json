@@ -3,8 +3,9 @@
   "version": "1.4.0",
   "platform": "Windows x64",
   "coreTests": {
-    "passed": 47,
-    "failed": 0
+    "passed": 50,
+    "failed": 0,
+    "credentialContextMaintenanceTests": 3
   },
   "providerCatalog": {
     "liveProvider": "AvalAI",
@@ -168,6 +169,22 @@
     "demoCorrections": 1,
     "demoApprovals": 3,
     "demoExitCode": 0,
-    "installerExecutionTestedThisVersion": false
+    "installerExecutionTestedThisVersion": true
+  },
+  "installedUpgrade": {
+    "testedVersion": "1.4.0",
+    "installer": "NSIS",
+    "installerExitCode": 0,
+    "normalInstalledLaunch": true,
+    "existingSettingsMigrated": true,
+    "existingConversationsPreserved": true,
+    "fullRecordsIdenticalAfterReopen": true,
+    "selectedConversationRestored": true,
+    "apiKeyUnlockedAfterReopen": true,
+    "profileEncryptionContextPreserved": true,
+    "desktopAndStartMenuShortcutsCorrect": true,
+    "databaseIntegrity": true,
+    "privateBackupWithEncryptionContextCreated": true,
+    "personalProfileDataIncludedInRepository": false
   }
 }
