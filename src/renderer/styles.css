@@ -1628,6 +1628,246 @@ details pre {
   width: 110px;
   flex-shrink: 0;
 }
+#settings-dialog {
+  width: 860px;
+  max-height: 92vh;
+}
+#settings-dialog[open] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 24px;
+}
+#settings-dialog > .modal-heading,
+#settings-dialog > p,
+.provider-tabs {
+  grid-column: 1 / -1;
+}
+#settings-dialog > p {
+  margin-bottom: 15px;
+}
+.provider-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.provider-tab {
+  font-size: 12px;
+  padding: 10px;
+  background: #141722;
+}
+.provider-tab strong {
+  font-weight: 400;
+}
+.provider-tab.active {
+  border-color: #7b67a5;
+  background: #2a233c;
+  color: var(--accent);
+}
+.provider-note {
+  min-height: 44px;
+  color: var(--muted);
+  font-size: 10px;
+  margin: 0 0 12px;
+  line-height: 1.8;
+}
+#settings-form > label {
+  margin: 10px 0;
+  font-size: 11px;
+}
+#settings-form input {
+  font-size: 11px;
+  padding: 8px 10px;
+}
+#settings-form .info-note {
+  margin: 10px 0;
+  font-size: 9px;
+}
+#settings-form .modal-foot {
+  flex-wrap: wrap;
+  margin-top: 15px;
+  justify-content: space-between;
+  gap: 8px;
+}
+#settings-form .modal-foot button {
+  font-size: 10px;
+  padding: 8px 10px;
+}
+.model-catalog {
+  padding-right: 20px;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.catalog-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  margin: 2px 0 13px;
+}
+.catalog-heading strong {
+  font-size: 12px;
+  font-weight: 400;
+}
+.catalog-heading button {
+  font-size: 9px;
+  padding: 7px 8px;
+  flex-shrink: 0;
+}
+#catalog-status {
+  display: block;
+  color: var(--muted);
+  font-size: 9px;
+  margin-top: 6px;
+  line-height: 1.8;
+  max-width: 205px;
+}
+#catalog-status.catalog-error {
+  color: var(--amber);
+}
+#model-search {
+  font-size: 11px;
+  padding: 9px 11px;
+  margin-bottom: 10px;
+}
+.catalog-list {
+  flex: 1;
+  min-height: 180px;
+  max-height: 310px;
+  overflow: auto;
+  scrollbar-width: thin;
+  padding-left: 5px;
+}
+.catalog-model {
+  display: block;
+  text-align: left;
+  direction: ltr;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 6px;
+  background: #121621;
+}
+.catalog-model strong {
+  display: block;
+  font:
+    11px Consolas,
+    monospace;
+  overflow-wrap: anywhere;
+  color: #dbd2f3;
+  font-weight: 400;
+}
+.catalog-model small {
+  display: block;
+  font-size: 9px;
+  margin-top: 6px;
+  color: var(--muted);
+}
+.catalog-hint {
+  font-size: 9px;
+  color: #8b92ab;
+  line-height: 1.9;
+  padding-top: 10px;
+  margin: 0;
+}
+.run-connection {
+  margin-top: 11px;
+  border-top: 1px solid #262638;
+  padding-top: 9px;
+}
+.run-connection-fields {
+  display: flex;
+  gap: 9px;
+  align-items: flex-end;
+}
+.composer .run-connection-fields label {
+  display: block;
+  font-size: 9px;
+  color: #9d9bb3;
+  margin: 0;
+  flex-shrink: 0;
+  width: 112px;
+}
+.composer .run-connection-fields .run-model-field {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+}
+.run-connection-fields select,
+.run-connection-fields input {
+  font: inherit;
+  font-size: 10px;
+  background: #10131d;
+  color: var(--text);
+  border: 1px solid #333044;
+  border-radius: 7px;
+  width: 100%;
+  height: 32px;
+  padding: 5px 7px;
+  margin-top: 4px;
+  direction: ltr;
+}
+.run-connection-fields input {
+  font-family: Consolas, Vazir, sans-serif;
+}
+.run-connection-fields .icon-button {
+  width: 25px;
+  height: 30px;
+}
+.run-connection-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  gap: 9px;
+}
+.composer .remember-model {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 5px;
+  font-size: 9px;
+  margin: 0;
+  color: #aaa4ba;
+}
+.remember-model input {
+  width: auto;
+  accent-color: var(--accent);
+  margin: 0;
+}
+#run-model-count {
+  font-size: 9px;
+  color: #88859e;
+}
+.history-model {
+  display: block;
+  font-size: 8px;
+  color: #9d92b3;
+  direction: ltr;
+  text-align: right;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.top-actions .badge {
+  max-width: 310px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: inline-block;
+}
+@media (max-height: 850px) {
+  .catalog-list {
+    max-height: 250px;
+  }
+  #settings-form > label {
+    margin: 8px 0;
+  }
+  #settings-dialog {
+    padding: 21px;
+  }
+}
 .composer-foot > span {
   flex: 1;
   min-width: 0;

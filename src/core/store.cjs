@@ -48,6 +48,7 @@ class RunStore {
           title: run.plan?.title || run.task,
           status: run.status,
           mode: run.mode,
+          connection: run.connection || null,
           updatedAt: run.updatedAt,
           root: run.root,
         });

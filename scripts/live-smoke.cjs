@@ -8,16 +8,17 @@ const { Workspace } = require("../src/core/workspace.cjs"),
   { RunStore } = require("../src/core/store.cjs"),
   { Harness } = require("../src/core/harness.cjs"),
   { ModelProvider } = require("../src/core/provider.cjs"),
-  { parseEnv } = require("../src/core/settings.cjs"),
+  { Settings } = require("../src/core/settings.cjs"),
   { createDemo, demoTask } = require("../src/core/demo.cjs");
 async function main() {
-  const root = path.resolve(__dirname, ".."),
-    env = parseEnv(await fs.readFile(path.join(root, ".env"), "utf8")),
-    config = {
-      baseURL: env.OPENAI_BASE_URL,
-      model: env.OPENAI_MODEL,
-      apiKey: env.OPENAI_API_KEY,
-    };
+  const root = path.resolve(__dirname, "..");
+  const settings = new Settings(path.join(root, ".test-output/live-settings"), {
+    isEncryptionAvailable: () => false,
+  });
+  await settings.load({ envFile: path.join(root, ".env") });
+  const config = settings.config();
+  const catalog = await settings.discover(config.providerId);
+  console.log("Discovered models:", catalog.models.length);
   const provider = new ModelProvider(config);
   const ping = await provider.ping();
   console.log("Connected:", ping.model);
@@ -39,6 +40,11 @@ async function main() {
       secrets: [config.apiKey],
       maxIterations: 22,
       mode: "live",
+      connection: {
+        providerId: config.providerId,
+        providerName: config.providerName,
+        model: config.model,
+      },
     }),
     seen = new Set();
   h.on("state", (s) => {
@@ -82,6 +88,11 @@ async function main() {
   );
   assert.equal(report.status, "completed");
   assert.equal(report.verification.ok, true);
+  assert.equal(report.connection.model, config.model);
+  assert.equal(
+    (await store.load(report.id)).connection.providerId,
+    config.providerId,
+  );
   assert(!report.changes.some((c) => c.path.startsWith("tests/")));
   console.log(
     JSON.stringify(

@@ -36,13 +36,15 @@ flowchart TD
 | `src/preload.cjs`    | API صریح رابط؛ بدون دسترسی عمومی Node یا generic IPC                         |
 | `core/harness.cjs`   | state machine مستقل، بودجهٔ اجرا و اصلاح، approval و completion gate         |
 | `core/provider.cjs`  | Chat Completions، schema JSON، یک فرصت اصلاح فرمت، timeout/abort             |
+| `core/catalog.cjs`   | preset سرویس‌ها، GET models با کلید همان سرویس، محدودیت پاسخ و نرمال‌سازی شناسه |
 | `core/workspace.cjs` | containment، private-path filtering، UTF-8 I/O، hash conflict و fingerprint  |
 | `core/commands.cjs`  | resolve ابزار، spawn بدون shell، محیط محدود، خروجی و زمان محدود، توقف فرایند |
 | `core/skills.cjs`    | بارگذاری declarative skills، hash و اعتماد، ابزارهای runtime                 |
-| `core/settings.cjs`  | رمزنگاری کلید با safeStorage، تنظیمات و مهارت‌های افزوده                     |
+| `core/settings.cjs`  | کلید رمز‌شدهٔ مستقل، مهاجرت v1، فهرست مدل‌ها و پیش‌فرض عمومی/پروژه             |
 | `core/store.cjs`     | snapshot اتمیک در صف، تاریخچه و پاک‌سازی کلیدهای قابل‌شناسایی                |
 | `core/demo.cjs`      | مدل اسکریپتی صریح دمو، با همان ابزار و تست واقعی                             |
 | `renderer/`          | رابط فارسی، پلن قابل ویرایش، source editor، قبل/بعد، event log و output      |
+| `renderer/model-controls.mjs` | پنل پرووایدرها، جستجوی مدل‌ها و انتخاب برای درخواست فعلی              |
 
 قرارداد پلن شامل `title`, `summary`, `steps[2..8]`, `acceptance[1..6]` و فرمان `verification` است. قرارداد عملیات یا یک `tool` با `step`, `args`, `message` است یا `finish` با خلاصه. متن توضیح کوتاه فعالیت برای کاربر است، نه زنجیرهٔ فکر خصوصی مدل.
 
@@ -50,7 +52,7 @@ flowchart TD
 
 ## State و دوام
 
-State شامل شناسه، درخواست، root، mode، plan، status، currentStep، iterations، corrections، observations، changes، backups، verification، review، summary و events است. وضعیت‌ها:
+State شامل شناسه، درخواست، root، mode، connection، plan، status، currentStep، iterations، corrections، observations، changes، backups، verification، review، summary و events است. `connection` فقط شناسه و نام پرووایدر و مدل را نگه می‌دارد؛ کلید در state قرار نمی‌گیرد. وضعیت‌ها:
 
 ```text
 planning → awaiting_plan → running ⇄ awaiting_approval
@@ -63,6 +65,14 @@ planning → awaiting_plan → running ⇄ awaiting_approval
 ```
 
 هر عملیات یک snapshot نسخه‌دار محلی با timestamp تولید می‌کند؛ ذخیره‌ها در صف و با rename اتمیک انجام می‌شوند. ۱۴ مشاهدهٔ اخیر و ۱۶۰ رویداد اخیر نگه‌داری می‌شوند. محتوا و hash نسخهٔ قبل از اولین ویرایش مدل پیش از نوشتن در snapshot ثبت می‌شود. گزارش JSON شامل قبل/بعد و خروجی تست است؛ بنابراین گزارش را مثل سورس پروژه خصوصی یا عمومی کن. بازکردن تاریخچه اجرای فرمان را از سر نمی‌گیرد و approval قدیمی قابل استفاده نیست.
+
+## تنظیمات چند پرووایدر
+
+schema نسخهٔ ۲ شامل `providers`، `defaultSelection`، `projects` و `skills` است. هر پروفایل endpoint، مدل پیش‌فرض، encryptedKey و cache فهرست مدل خودش را دارد. فایل قدیمی تک‌پرووایدر با حفظ کلید رمز‌شده، مدل و مهارت‌ها مهاجرت می‌کند. API key هر پروفایل فقط برای درخواست به همان پروفایل استفاده می‌شود؛ پروفایل فاقد کلید به کلید سرویس دیگر رجوع نمی‌کند.
+
+انتخاب صریح درخواست بر پیش‌فرض پروژه و سپس پیش‌فرض عمومی اولویت دارد. پیش‌فرض پروژه با hash مسیر canonical ذخیره می‌شود. main هنگام شروع پلن، پیکربندی و هویت مدل را به provider و هارنس می‌دهد؛ تغییر پیش‌فرض بعدی مدل اجرای موجود را عوض نمی‌کند. گزارش و خلاصهٔ تاریخچه هویت همان اجرا را دارند.
+
+دریافت مدل‌ها با GET models در main انجام می‌شود؛ renderer فقط شناسه و metadata مجاز را می‌گیرد. درخواست‌های هم‌زمان یک پروفایل ادغام می‌شوند و token مبتنی بر endpoint و کلید، پاسخ دیررسِ تنظیمات قبلی را رد می‌کند. پاسخ ناموفق cache موفق را پاک نمی‌کند. رابط برای cache خالی یا قدیمی‌تر از شش ساعت دریافت خودکار دارد؛ تلاش دستی و ورود شناسهٔ مدل نیز در دسترس‌اند. [جزئیات سرویس‌ها](PROVIDERS.md).
 
 ## اعتبار موفقیت و بازیابی
 

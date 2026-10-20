@@ -59,7 +59,7 @@
           </button>
           <div class="course-note">
             <span class="dot mint"></span> پروژهٔ نهایی استارکوچ
-            <span>v1.0</span>
+            <span>v1.1</span>
           </div>
         </div>
       </aside>
@@ -146,6 +146,40 @@
                 placeholder="مثلاً: اشکال تابع را پیدا کن، اصلاحش کن و تست‌های مرزی را اجرا کن…"
                 maxlength="6000"
               ></textarea>
+              <div id="run-connection" class="run-connection">
+                <div class="run-connection-fields">
+                  <label
+                    >پرووایدر<select
+                      id="run-provider"
+                      aria-label="پرووایدر این درخواست"
+                    ></select
+                  ></label>
+                  <label class="run-model-field"
+                    >مدل<input
+                      id="run-model"
+                      list="run-model-list"
+                      dir="ltr"
+                      autocomplete="off"
+                      placeholder="جستجو یا شناسهٔ مدل"
+                      aria-label="مدل این درخواست"
+                  /></label>
+                  <datalist id="run-model-list"></datalist>
+                  <button
+                    id="run-refresh-models"
+                    type="button"
+                    class="icon-button"
+                    title="دریافت مدل‌های این پرووایدر"
+                  >
+                    <i data-icon="refresh"></i>
+                  </button>
+                </div>
+                <div class="run-connection-meta">
+                  <label class="remember-model"
+                    ><input id="remember-model" type="checkbox" checked />
+                    پیش‌فرض این پروژه شود</label
+                  ><span id="run-model-count"></span>
+                </div>
+              </div>
               <div class="composer-foot">
                 <span id="model-label"
                   ><span class="dot"></span> مدل متصل نشده</span
@@ -261,7 +295,9 @@ Open a project or start the offline workshop.</pre
       <p class="muted">
         از AvalAI یا هر سرویس سازگار با Chat Completions استفاده کن.
       </p>
+      <div id="provider-tabs" class="provider-tabs"></div>
       <form id="settings-form">
+        <p id="provider-note" class="provider-note"></p>
         <label
           >آدرس API<input
             name="baseURL"
@@ -273,7 +309,6 @@ Open a project or start the offline workshop.</pre
           >نام مدل<input
             name="model"
             dir="ltr"
-            required
             placeholder="deepseek-v4.1-flash" /></label
         ><label
           >کلید API<input
@@ -287,6 +322,10 @@ Open a project or start the offline workshop.</pre
         <label class="checkbox-label"
           ><input name="clearKey" type="checkbox" /> حذف کلید ذخیره‌شده</label
         >
+        <label class="checkbox-label"
+          ><input name="makeDefault" type="checkbox" /> پیش‌فرض درخواست‌های جدید
+          شود</label
+        >
         <div class="modal-foot">
           <button type="button" id="ping" class="secondary">
             آزمایش اتصال ذخیره‌شده</button
@@ -294,6 +333,29 @@ Open a project or start the offline workshop.</pre
         </div>
         <p id="settings-result" aria-live="polite" class="form-result"></p>
       </form>
+      <div class="model-catalog">
+        <div class="catalog-heading">
+          <div>
+            <strong>مدل‌های پرووایدر</strong><span id="catalog-status"></span>
+          </div>
+          <button id="refresh-models" type="button" class="secondary">
+            <i data-icon="refresh"></i> دریافت مدل‌ها
+          </button>
+        </div>
+        <input
+          id="model-search"
+          type="search"
+          placeholder="جستجوی مدل با نام یا شناسه…"
+          autocomplete="off"
+          aria-label="جستجوی مدل‌ها"
+        />
+        <div id="catalog-list" class="catalog-list"></div>
+        <p class="catalog-hint">
+          فهرست مستقیماً از API دریافت می‌شود. برای این هارنس یک مدل متنی سازگار
+          با Chat Completions انتخاب کن. اگر /models ارائه نشود، ورود دستی
+          شناسهٔ مدل هم در دسترس است.
+        </p>
+      </div>
     </dialog>
     <dialog id="skill-dialog" class="modal">
       <div class="modal-heading">

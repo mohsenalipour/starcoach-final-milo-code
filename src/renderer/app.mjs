@@ -1,4 +1,5 @@
 import { icon, hydrateIcons } from "./icons.mjs";
+import { ModelControls } from "./model-controls.mjs";
 const $ = (id) => document.getElementById(id),
   api = window.milo;
 const labels = {
@@ -74,6 +75,16 @@ async function guard(fn) {
     return null;
   }
 }
+const modelControls = new ModelControls({
+  call,
+  toast,
+  onSettings: (value) => {
+    settings = value;
+    modelControls.update(value);
+    render();
+  },
+  onSelection: () => render(),
+});
 function busy() {
   return state && !state.readOnly && active.has(state.status);
 }
@@ -103,11 +114,14 @@ async function adopt(result) {
   mode = result.mode || "live";
   demoProject = mode === "offline-demo";
   setProject(result.project);
+  modelControls.update(settings, result.selection || settings.defaultSelection);
+  $("remember-model").checked = true;
   closeEditor();
   $("task").value = result.task || "";
   lastCommand = null;
   render();
   await Promise.all([refreshFiles(), refreshHistory()]);
+  if (mode === "live") modelControls.autoFetch();
   if (result.task) toast("پروژهٔ نمونهٔ تازه آماده شد. «ساخت پلن» را بزن.");
 }
 async function demo() {
@@ -131,14 +145,24 @@ function render() {
   $("model-mode").hidden = !demoProject;
   $("model-mode").value = mode;
   $("model-mode").disabled = isBusy || readonly;
+  const selected = modelControls.getSelection(),
+    selectedProfile = modelControls.profile();
+  modelControls.context({
+    disabled: isBusy || readonly,
+    offline: mode === "offline-demo",
+  });
   $("model-label").replaceChildren(
-    el("span", "dot" + (settings?.hasKey ? " connected" : "")),
+    el("span", "dot" + (selectedProfile?.hasKey ? " connected" : "")),
     document.createTextNode(
       mode === "offline-demo"
         ? "Offline demo · real tools"
-        : settings?.hasKey
-          ? settings.model
-          : "مدل متصل نشده",
+        : readonly && state.connection
+          ? state.connection.providerName + " / " + state.connection.model
+          : selectedProfile?.hasKey
+            ? selectedProfile.name +
+              " / " +
+              (selected.model || "مدل را انتخاب کن")
+            : "کلید " + (selectedProfile?.name || "پرووایدر") + " ثبت نشده",
     ),
   );
   $("composer-hint").textContent = readonly
@@ -151,7 +175,10 @@ function render() {
   $("mode-badge").textContent = state
     ? state.mode === "offline-demo"
       ? "دموی آفلاین · مدل اسکریپتی"
-      : "مدل زنده · " + settings?.model
+      : "مدل زنده · " +
+        (state.connection
+          ? state.connection.providerName + " / " + state.connection.model
+          : "مدل در گزارش قدیمی ثبت نشده")
     : mode === "offline-demo"
       ? "دموی آفلاین · ابزار واقعی"
       : "آمادهٔ شروع";
@@ -780,6 +807,14 @@ async function refreshHistory() {
       },
     );
     b.append(el("strong", "", run.title));
+    if (run.connection)
+      b.append(
+        el(
+          "span",
+          "history-model",
+          run.connection.providerName + " / " + run.connection.model,
+        ),
+      );
     const meta = el("small");
     meta.append(
       el("span", "", labels[run.status] || run.status),
@@ -819,30 +854,6 @@ function setWork(key) {
     .forEach((b) => b.classList.toggle("active", b.dataset.work === key));
   if (key === "skills") renderSkills();
 }
-function renderSettings() {
-  const form = $("settings-form");
-  form.elements.baseURL.value = settings.baseURL;
-  form.elements.model.value = settings.model;
-  form.elements.apiKey.value = "";
-  form.elements.clearKey.checked = false;
-  $("key-status").textContent = settings.hasKey
-    ? settings.keyStorage === "encrypted"
-      ? "کلید با رمزنگاری حساب ویندوز ذخیره شده؛ به رابط کاربری ارسال نمی‌شود."
-      : "کلید فقط تا بسته‌شدن برنامه در حافظه می‌ماند."
-    : "هنوز کلیدی ثبت نشده. دموی آفلاین به کلید نیاز ندارد.";
-  $("settings-result").textContent = "";
-  $("connection-dot").className = "dot" + (settings.hasKey ? " connected" : "");
-  $("model-label").replaceChildren(
-    el("span", "dot" + (settings.hasKey ? " connected" : "")),
-    document.createTextNode(
-      mode === "offline-demo"
-        ? "Offline demo · real tools"
-        : settings.hasKey
-          ? settings.model
-          : "مدل متصل نشده",
-    ),
-  );
-}
 $("choose-project").onclick = () => guard(choose);
 $("welcome-project").onclick = () => guard(choose);
 $("demo").onclick = () => guard(demo);
@@ -855,6 +866,8 @@ $("new-task").onclick = () =>
     $("task").value = "";
     const boot = await call("boot");
     setProject(boot.project);
+    modelControls.update(settings, boot.selection || settings.defaultSelection);
+    $("remember-model").checked = true;
     render();
     await refreshFiles();
   });
@@ -902,7 +915,16 @@ $("task-form").onsubmit = (event) => {
     if (task.length < 8) throw Error("درخواست را کمی کامل‌تر بنویس.");
     $("submit-task").disabled = true;
     view = "plan";
-    await call("plan", { task, mode });
+    try {
+      await call("plan", {
+        task,
+        mode,
+        selection: modelControls.getSelection(),
+        remember: $("remember-model").checked,
+      });
+    } finally {
+      render();
+    }
   });
 };
 $("task").addEventListener("keydown", (e) => {
@@ -914,6 +936,7 @@ $("task").addEventListener("keydown", (e) => {
 $("model-mode").onchange = (event) => {
   mode = event.target.value;
   render();
+  if (mode === "live") modelControls.autoFetch();
 };
 $("stop").onclick = () => guard(() => call("stop"));
 $("export").onclick = () =>
@@ -925,41 +948,11 @@ $("clear-terminal").onclick = () => {
   $("terminal").textContent = "";
 };
 $("open-settings").onclick = () => {
-  renderSettings();
-  $("settings-dialog").showModal();
+  modelControls.open();
 };
 document
   .querySelectorAll("[data-close]")
   .forEach((b) => (b.onclick = () => $(b.dataset.close).close()));
-$("settings-form").onsubmit = (event) => {
-  event.preventDefault();
-  void guard(async () => {
-    const f = event.target;
-    settings = await call("saveSettings", {
-      baseURL: f.elements.baseURL.value.trim(),
-      model: f.elements.model.value.trim(),
-      apiKey: f.elements.apiKey.value.trim(),
-      clearKey: f.elements.clearKey.checked,
-    });
-    renderSettings();
-    $("settings-result").textContent =
-      "تنظیمات ذخیره شد. برای بررسی سرویس «آزمایش اتصال» را بزن.";
-  });
-};
-$("ping").onclick = () =>
-  guard(async () => {
-    $("ping").disabled = true;
-    $("settings-result").textContent = "در حال ارتباط با سرویس…";
-    try {
-      const result = await call("ping");
-      $("settings-result").textContent =
-        "اتصال موفق بود. مدل " + result.model + " پاسخ داد.";
-    } catch (e) {
-      $("settings-result").textContent = e.message;
-    } finally {
-      $("ping").disabled = false;
-    }
-  });
 $("confirm-skill").onclick = () =>
   guard(async () => {
     skills = await call("importSkill", { digest: preview.digest });
@@ -998,10 +991,12 @@ async function boot() {
   hydrateIcons();
   const data = await call("boot");
   settings = data.settings;
+  modelControls.update(settings, data.selection || settings.defaultSelection);
+  mode = data.mode || "live";
+  demoProject = mode === "offline-demo";
   skills = data.skills;
   state = data.state;
   setProject(data.project);
-  renderSettings();
   renderSkills();
   render();
   await Promise.all([refreshHistory(), refreshFiles()]);

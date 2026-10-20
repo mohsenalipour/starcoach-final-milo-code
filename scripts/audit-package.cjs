@@ -39,7 +39,8 @@ if (fs.existsSync(envFile)) {
       "Configured secret found in package",
     );
 }
-const installer = "Milo-Code-Setup-1.0.0-x64.exe";
+const version = require("../package.json").version;
+const installer = "Milo-Code-Setup-" + version + "-x64.exe";
 const bytes = fs.readFileSync(path.join(root, "dist", installer));
 const sha256 = crypto.createHash("sha256").update(bytes).digest("hex");
 fs.writeFileSync(

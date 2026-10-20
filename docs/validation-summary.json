@@ -1,8 +1,15 @@
 {
   "date": "2026-10-20",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "platform": "Windows x64",
-  "coreTests": { "passed": 14, "failed": 0 },
+  "coreTests": { "passed": 24, "failed": 0 },
+  "providerCatalog": {
+    "liveProvider": "AvalAI",
+    "liveModelCount": 369,
+    "selectedModelPresent": true,
+    "authenticatedMetisTested": false,
+    "authenticatedBoxAPITested": false
+  },
   "offlineDemo": {
     "model": "explicit scripted provider",
     "iterations": 10,
@@ -17,13 +24,17 @@
     "iterations": 5,
     "corrections": 0,
     "exitCode": 0,
-    "originalTestsChanged": false
+    "originalTestsChanged": false,
+    "modelIdentityRecorded": true
   },
   "installedDesktop": {
     "installer": "NSIS",
     "packaged": true,
     "preloadBridge": true,
     "contentSecurityPolicy": true,
+    "providerProfiles": ["avalai", "metis", "boxapi", "custom"],
+    "providerOptions": 4,
+    "modelControl": true,
     "demoCompleted": true,
     "corrections": 1,
     "commandApprovals": 3,
@@ -32,13 +43,13 @@
     "bundledNode": "24.22.0"
   },
   "packageAudit": {
-    "matchingApplicationFiles": 35,
+    "matchingApplicationFiles": 37,
     "privateFiles": 0,
     "configuredKeyIncluded": false
   },
   "installer": {
-    "filename": "Milo-Code-Setup-1.0.0-x64.exe",
-    "bytes": 111547461,
-    "sha256": "024f483ee4da37ac450cb2b1ffcd29c17d1942829bae5c65a2b6dff741c39899"
+    "filename": "Milo-Code-Setup-1.1.0-x64.exe",
+    "bytes": 111553001,
+    "sha256": "8c6458d2071cf17293040fe2a344d946757474870bef6f38f944748ba2c87295"
   }
 }

@@ -40,14 +40,15 @@ const available = () =>
 const send = (name, data) => {
   if (win && !win.isDestroyed()) win.webContents.send("milo:" + name, data);
 };
-function connect(provider, mode) {
+function connect(provider, mode, connection = null) {
   const current = new Harness({
     workspace,
     provider,
     mode,
+    connection,
     skills,
     store,
-    secrets: [settings.apiKey],
+    secrets: settings.allSecrets(),
   });
   harness = current;
   current.on("state", (data) => {
@@ -63,7 +64,11 @@ async function select(rootPath, mode = "live") {
   workspace = await Workspace.open(rootPath);
   harness = null;
   projectMode = mode;
-  return { project: await workspace.summary(), mode };
+  return {
+    project: await workspace.summary(),
+    mode,
+    selection: settings.forProject(workspace.root),
+  };
 }
 function ipc(name, handler) {
   ipcMain.handle("milo:" + name, async (event, ...args) => {
@@ -75,7 +80,10 @@ function ipc(name, handler) {
     try {
       return { ok: true, value: await handler(...args) };
     } catch (error) {
-      return { ok: false, error: redact(error.message, [settings?.apiKey]) };
+      return {
+        ok: false,
+        error: redact(error.message, settings?.allSecrets() || []),
+      };
     }
   });
 }
@@ -85,6 +93,10 @@ function register() {
     project: workspace ? await workspace.summary() : null,
     state: harness?.snapshot() || null,
     settings: settings.public(),
+    selection: workspace
+      ? settings.forProject(workspace.root)
+      : settings.value.defaultSelection,
+    mode: projectMode,
     skills: skills.list(),
     dataPath: app.getPath("userData"),
   }));
@@ -124,7 +136,7 @@ function register() {
     });
   });
   ipc("plan", async (data) => {
-    keys(data, ["task", "mode"]);
+    keys(data, ["task", "mode", "selection", "remember"]);
     assert(workspace, "ابتدا پوشهٔ پروژه یا دموی آماده را انتخاب کن.");
     available();
     assert(
@@ -132,13 +144,32 @@ function register() {
         (data.mode === "offline-demo" && projectMode === "offline-demo"),
       "دموی آفلاین فقط روی پروژهٔ نمونهٔ تازه اجرا می‌شود.",
     );
+    const config = settings.config(
+      data.selection || settings.forProject(workspace.root),
+    );
     const provider =
       data.mode === "offline-demo"
         ? new DemoProvider()
-        : new ModelProvider(settings.config());
+        : new ModelProvider(config);
     if (data.mode === "live")
-      assert(settings.apiKey, "ابتدا کلید سرویس مدل را در تنظیمات وارد کن.");
-    const h = connect(provider, data.mode);
+      assert(
+        config.apiKey && config.model,
+        "ابتدا کلید همین پرووایدر و مدل را در تنظیمات انتخاب کن.",
+      );
+    if (data.mode === "live" && data.remember)
+      await settings.saveProject(workspace.root, {
+        providerId: config.providerId,
+        model: config.model,
+      });
+    const connection =
+      data.mode === "offline-demo"
+        ? null
+        : {
+            providerId: config.providerId,
+            providerName: config.providerName,
+            model: config.model,
+          };
+    const h = connect(provider, data.mode, connection);
     void h.makePlan(data.task).catch((e) => h.fail(e));
     return { started: true };
   });
@@ -192,10 +223,17 @@ function register() {
   ipc("saveSettings", async (data) => {
     available();
     const value = await settings.update(data);
-    store.secrets = [settings.apiKey];
+    store.secrets = settings.allSecrets();
     return value;
   });
-  ipc("ping", async () => new ModelProvider(settings.config()).ping());
+  ipc("ping", async (selection) =>
+    new ModelProvider(settings.config(selection)).ping(),
+  );
+  ipc("models", async (data) => {
+    keys(data, ["providerId"]);
+    const result = await settings.discover(data.providerId);
+    return { ...result, settings: settings.public() };
+  });
   ipc("skills", () => skills.list());
   ipc("toggleSkill", async (data) => {
     available();
@@ -226,15 +264,13 @@ function register() {
 }
 async function saveSkillState() {
   await settings.saveSkills(
-    skills
-      .list()
-      .map((s) => ({
-        id: s.id,
-        root: s.root,
-        digest: s.digest,
-        builtin: s.builtin,
-        enabled: s.enabled,
-      })),
+    skills.list().map((s) => ({
+      id: s.id,
+      root: s.root,
+      digest: s.digest,
+      builtin: s.builtin,
+      enabled: s.enabled,
+    })),
   );
 }
 async function init() {
@@ -251,7 +287,9 @@ async function init() {
       await skills.setEnabled(item.id, item.enabled);
     } catch {}
   }
-  store = new RunStore(path.join(data, "runs"), { secrets: [settings.apiKey] });
+  store = new RunStore(path.join(data, "runs"), {
+    secrets: settings.allSecrets(),
+  });
   session.defaultSession.setPermissionRequestHandler(
     (_wc, _permission, callback) => callback(false),
   );
@@ -304,7 +342,13 @@ async function init() {
   win.show();
   if (process.env.MILO_SMOKE === "1") {
     const status = await win.webContents.executeJavaScript(
-      '({title:document.title,bridge:typeof window.milo?.boot,buttons:document.querySelectorAll("button").length,csp:!!document.querySelector("meta[http-equiv]")})',
+      'window.milo.boot().then(packet=>({title:document.title,bridge:typeof window.milo?.boot,buttons:document.querySelectorAll("button").length,csp:!!document.querySelector("meta[http-equiv]"),providerProfiles:packet.value.settings.providers.map(p=>p.id),providerOptions:document.querySelector("#run-provider").options.length,modelControl:!!document.querySelector("#run-model")}))',
+    );
+    assert(
+      status.providerProfiles.length === 4 &&
+        status.providerOptions === 4 &&
+        status.modelControl,
+      "کنترل‌های پرووایدر و مدل در رابط بارگذاری نشدند.",
     );
     if (process.env.MILO_SMOKE_DEMO === "1")
       status.demo = await require("./core/desktop-smoke.cjs").desktopDemo({

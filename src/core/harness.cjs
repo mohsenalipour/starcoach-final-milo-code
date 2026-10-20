@@ -69,6 +69,7 @@ class Harness extends EventEmitter {
     skills,
     store,
     mode = "live",
+    connection = null,
     maxIterations = 28,
     maxCorrections = 6,
     secrets = [],
@@ -80,6 +81,7 @@ class Harness extends EventEmitter {
       skills,
       store,
       mode,
+      connection,
       maxIterations,
       maxCorrections,
       secrets,
@@ -125,6 +127,7 @@ class Harness extends EventEmitter {
     this.state = {
       id: id(),
       mode: this.mode,
+      connection: this.connection,
       root: this.workspace.root,
       task: task.trim(),
       status: "planning",
@@ -200,13 +203,11 @@ class Harness extends EventEmitter {
       plan: this.state.plan,
       skills: await this.skills.context(),
       files: (await this.workspace.list(".", 200)).files,
-      changes: this.workspace
-        .changeList()
-        .map((c) => ({
-          path: c.path,
-          before: c.before?.slice(0, 14000) ?? null,
-          after: c.after.slice(0, 18000),
-        })),
+      changes: this.workspace.changeList().map((c) => ({
+        path: c.path,
+        before: c.before?.slice(0, 14000) ?? null,
+        after: c.after.slice(0, 18000),
+      })),
       observations: this.state.observations,
       verification: this.state.verification,
       iteration: this.state.iterations,
