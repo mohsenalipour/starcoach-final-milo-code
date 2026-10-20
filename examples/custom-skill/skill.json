@@ -1,0 +1,18 @@
+{
+  "id": "workshop-syntax",
+  "name": "Workshop Syntax",
+  "description": "نمونهٔ مهارت قابل واردکردن: بررسی syntax فایل دمو بدون اجرای برنامه",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "id": "syntax",
+      "description": "بررسی syntax فایل src/math.cjs با Node همراه برنامه",
+      "command": {
+        "program": "node",
+        "args": ["--check", "src/math.cjs"],
+        "cwd": ".",
+        "timeoutMs": 10000
+      }
+    }
+  ]
+}

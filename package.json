@@ -1,0 +1,65 @@
+{
+  "name": "milo-code",
+  "productName": "Milo Code",
+  "version": "1.0.0",
+  "description": "An independent coding harness with planning, tools, skills, correction and human approval.",
+  "author": "mohsenalipour",
+  "license": "MIT",
+  "private": true,
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "test:demo": "node scripts/demo-smoke.cjs",
+    "test:live": "node scripts/live-smoke.cjs",
+    "icons": "node scripts/make-icon.cjs",
+    "build:dir": "node scripts/make-icon.cjs && electron-builder --win dir --x64",
+    "build:win": "node scripts/make-icon.cjs && electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "44.9.1",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "ir.starcoach.milo.code",
+    "productName": "Milo Code",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "src/**/*",
+      "skills/**/*",
+      "examples/**/*",
+      "assets/**/*",
+      "package.json",
+      "LICENSE"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/milo.ico",
+      "signExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Milo Code",
+      "runAfterFinish": false,
+      "artifactName": "Milo-Code-Setup-${version}-${arch}.${ext}"
+    },
+    "publish": null
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

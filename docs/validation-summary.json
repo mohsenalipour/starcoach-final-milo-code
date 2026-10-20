@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-20",
+  "version": "1.0.0",
+  "platform": "Windows x64",
+  "coreTests": { "passed": 14, "failed": 0 },
+  "offlineDemo": {
+    "model": "explicit scripted provider",
+    "iterations": 10,
+    "corrections": 1,
+    "commandApprovals": 3,
+    "approvalActor": "test-driver",
+    "exitCode": 0
+  },
+  "liveDemo": {
+    "provider": "AvalAI",
+    "model": "deepseek-v4.1-flash",
+    "iterations": 5,
+    "corrections": 0,
+    "exitCode": 0,
+    "originalTestsChanged": false
+  },
+  "installedDesktop": {
+    "installer": "NSIS",
+    "packaged": true,
+    "preloadBridge": true,
+    "contentSecurityPolicy": true,
+    "demoCompleted": true,
+    "corrections": 1,
+    "commandApprovals": 3,
+    "approvalActor": "test-driver",
+    "exitCode": 0,
+    "bundledNode": "24.22.0"
+  },
+  "packageAudit": {
+    "matchingApplicationFiles": 35,
+    "privateFiles": 0,
+    "configuredKeyIncluded": false
+  },
+  "installer": {
+    "filename": "Milo-Code-Setup-1.0.0-x64.exe",
+    "bytes": 111547461,
+    "sha256": "024f483ee4da37ac450cb2b1ffcd29c17d1942829bae5c65a2b6dff741c39899"
+  }
+}

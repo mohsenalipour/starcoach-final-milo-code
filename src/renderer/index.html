@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
+    />
+    <title>Milo Code — میز کار ایجنت کدنویس</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand" dir="ltr">
+          <img src="../../assets/mark.svg" alt="" width="38" height="38" />
+          <div>
+            <strong>Milo<span>Code</span></strong
+            ><small>YOUR CODING WORKSHOP</small>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          <button id="choose-project" class="primary">
+            <i data-icon="folder"></i> باز کردن پروژه</button
+          ><button id="demo" class="secondary">
+            <i data-icon="play"></i> دموی آماده و آفلاین
+            <span class="small-label">۳ دقیقه</span>
+          </button>
+        </div>
+        <div class="section-label">فضای کار <span>WORKSPACE</span></div>
+        <div class="project-card">
+          <span class="folder-tile"><i data-icon="code"></i></span>
+          <div>
+            <strong id="project-name">پروژه‌ای انتخاب نشده</strong
+            ><small id="project-path">یک پوشه یا دموی آماده انتخاب کن</small>
+          </div>
+        </div>
+        <button id="new-task" class="nav-button">
+          <i data-icon="plus"></i> درخواست تازه
+        </button>
+        <div class="history-heading">
+          <div class="section-label">تاریخچهٔ اجراها</div>
+          <button
+            id="refresh-history"
+            class="icon-button"
+            title="به‌روزرسانی تاریخچه"
+          >
+            <i data-icon="refresh"></i>
+          </button>
+        </div>
+        <div id="history" class="history-list">
+          <p class="muted empty-note">اجراها و گزارش تست اینجا می‌مانند.</p>
+        </div>
+        <div class="sidebar-foot">
+          <button id="open-settings" class="nav-button">
+            <i data-icon="settings"></i> تنظیمات مدل
+            <span id="connection-dot" class="dot"></span>
+          </button>
+          <div class="course-note">
+            <span class="dot mint"></span> پروژهٔ نهایی استارکوچ
+            <span>v1.0</span>
+          </div>
+        </div>
+      </aside>
+      <main class="main-shell">
+        <header class="topbar">
+          <div class="breadcrumb" dir="ltr">
+            <span>MILO /</span><strong>Code workspace</strong>
+          </div>
+          <div class="top-actions">
+            <span id="mode-badge" class="badge">آمادهٔ شروع</span
+            ><button id="export" class="quiet" disabled>
+              <i data-icon="download"></i> گزارش اجرا</button
+            ><button id="stop" class="stop-button" disabled>
+              <i data-icon="stop"></i> توقف
+            </button>
+          </div>
+        </header>
+        <div class="work-grid">
+          <section class="agent-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="eyebrow">FROM INTENT TO VERIFIED CODE</span>
+                <h1>میز کار ایجنت</h1>
+              </div>
+              <div id="run-status" class="status-chip">
+                <span class="dot"></span><span>منتظر درخواست</span>
+              </div>
+            </div>
+            <div class="pipeline" aria-label="مراحل هارنس">
+              <div data-phase="plan"><i data-icon="plan"></i> پلن</div>
+              <span>←</span>
+              <div data-phase="tools"><i data-icon="code"></i> ابزار</div>
+              <span>←</span>
+              <div data-phase="test"><i data-icon="check"></i> تست و اصلاح</div>
+              <span>←</span>
+              <div data-phase="review"><i data-icon="shield"></i> بازبینی</div>
+            </div>
+            <div class="agent-tabs">
+              <button class="active" data-view="plan">
+                پلن و پیشرفت <span id="step-count">۰</span></button
+              ><button data-view="activity">
+                رویدادها <span id="event-count">۰</span></button
+              ><button data-view="review">نتیجه و تست</button>
+            </div>
+            <div id="agent-scroll" class="agent-scroll">
+              <div id="welcome" class="welcome">
+                <div class="welcome-orbit">
+                  <i data-icon="spark"></i><span class="orbit-dot one"></span
+                  ><span class="orbit-dot two"></span>
+                </div>
+                <span class="eyebrow">A HARNESS. A REAL WORKSPACE.</span>
+                <h2>یک مسئله بده.<br /><em>مسیر حل را ببین.</em></h2>
+                <p>
+                  از برنامه‌ریزی تا ویرایش کد و تست واقعی؛<br />همهٔ گام‌ها
+                  روبه‌روی توست.
+                </p>
+                <div class="welcome-options">
+                  <button id="welcome-demo">
+                    <i data-icon="play"></i><strong>دموی اصلاح باگ</strong
+                    ><small>بدون اینترنت، با تست واقعی</small
+                    ><span>↗</span></button
+                  ><button id="welcome-project">
+                    <i data-icon="folder"></i><strong>پروژهٔ خودت</strong
+                    ><small>پوشه را انتخاب کن و مسئله را بگو</small
+                    ><span>↗</span>
+                  </button>
+                </div>
+                <div class="trust-note">
+                  <i data-icon="shield"></i> فرمان‌ها با تأیید تو اجرا می‌شوند.
+                </div>
+              </div>
+              <div id="plan-view" class="view" hidden></div>
+              <div id="activity-view" class="view" hidden></div>
+              <div id="review-view" class="view" hidden></div>
+            </div>
+            <div id="approval" class="approval" hidden></div>
+            <form id="task-form" class="composer">
+              <label for="task"
+                >درخواست تو
+                <span id="composer-hint">اول پروژه را انتخاب کن</span></label
+              ><textarea
+                id="task"
+                rows="3"
+                placeholder="مثلاً: اشکال تابع را پیدا کن، اصلاحش کن و تست‌های مرزی را اجرا کن…"
+                maxlength="6000"
+              ></textarea>
+              <div class="composer-foot">
+                <span id="model-label"
+                  ><span class="dot"></span> مدل متصل نشده</span
+                ><select
+                  id="model-mode"
+                  class="model-mode"
+                  aria-label="نوع اجرای پروژهٔ نمونه"
+                  hidden
+                >
+                  <option value="offline-demo">دموی آفلاین</option>
+                  <option value="live">مدل زنده</option></select
+                ><button
+                  id="submit-task"
+                  type="submit"
+                  class="primary"
+                  disabled
+                >
+                  ساخت پلن <i data-icon="arrow"></i>
+                </button>
+              </div>
+            </form>
+          </section>
+          <section class="workspace-panel">
+            <div class="workspace-heading">
+              <div>
+                <i data-icon="layers"></i><strong>پروژه و خروجی</strong>
+              </div>
+              <button
+                id="refresh-files"
+                class="icon-button"
+                title="خواندن دوبارهٔ فایل‌ها"
+              >
+                <i data-icon="refresh"></i>
+              </button>
+            </div>
+            <div class="workspace-tabs">
+              <button data-work="files" class="active">فایل‌ها</button
+              ><button data-work="changes">
+                تغییرات <span id="change-count">۰</span></button
+              ><button data-work="skills">
+                مهارت‌ها <span id="skill-count">۳</span>
+              </button>
+            </div>
+            <div id="files-work" class="work-view">
+              <div id="file-list" class="file-list">
+                <p class="empty-note">فایل‌های پروژه</p>
+              </div>
+              <div class="editor-pane">
+                <div class="editor-toolbar">
+                  <span id="editor-path" dir="ltr">No file selected</span
+                  ><button id="save-file" class="quiet" disabled>
+                    <i data-icon="save"></i> ذخیره
+                  </button>
+                </div>
+                <div id="editor-empty" class="editor-empty">
+                  <i data-icon="code"></i><strong>کد، در دسترس تو</strong>
+                  <p>فایلی را برای دیدن یا ویرایش مستقیم انتخاب کن.</p>
+                  <span>UTF-8 · ویرایش با کنترل تداخل نسخه‌ها</span>
+                </div>
+                <textarea
+                  id="editor"
+                  spellcheck="false"
+                  aria-label="ویرایشگر کد"
+                  dir="ltr"
+                  hidden
+                ></textarea>
+                <div id="editor-info" class="editor-info">
+                  ویرایش دستی در زمان توقف یا انتظار تأیید در دسترس است.
+                </div>
+              </div>
+            </div>
+            <div id="changes-work" class="work-view change-view" hidden></div>
+            <div id="skills-work" class="work-view skills-view" hidden></div>
+            <div class="terminal-heading">
+              <span dir="ltr"><i data-icon="terminal"></i> RUN OUTPUT</span
+              ><span id="terminal-status">خروجی واقعی فرمان‌ها</span
+              ><button
+                id="clear-terminal"
+                class="icon-button"
+                title="پاک‌کردن نمایش خروجی"
+              >
+                <i data-icon="clear"></i>
+              </button>
+            </div>
+            <pre id="terminal" class="terminal" dir="ltr">
+Milo Code is ready.
+Open a project or start the offline workshop.</pre
+            >
+          </section>
+        </div>
+        <footer class="statusbar">
+          <span
+            ><span class="dot mint"></span> هارنس مستقل · ابزار واقعی · کنترل
+            انسانی</span
+          ><span id="footer-status" dir="ltr">Windows Desktop / Electron</span>
+        </footer>
+      </main>
+    </div>
+    <dialog id="settings-dialog" class="modal">
+      <div class="modal-heading">
+        <div>
+          <span class="eyebrow">MODEL CONNECTION</span>
+          <h2>تنظیمات مدل</h2>
+        </div>
+        <button
+          class="icon-button"
+          data-close="settings-dialog"
+          aria-label="بستن"
+        >
+          ×
+        </button>
+      </div>
+      <p class="muted">
+        از AvalAI یا هر سرویس سازگار با Chat Completions استفاده کن.
+      </p>
+      <form id="settings-form">
+        <label
+          >آدرس API<input
+            name="baseURL"
+            type="url"
+            dir="ltr"
+            required
+            placeholder="https://api.avalai.ir/v1" /></label
+        ><label
+          >نام مدل<input
+            name="model"
+            dir="ltr"
+            required
+            placeholder="deepseek-v4.1-flash" /></label
+        ><label
+          >کلید API<input
+            name="apiKey"
+            type="password"
+            dir="ltr"
+            autocomplete="off"
+            placeholder="برای حفظ کلید قبلی خالی بگذار"
+        /></label>
+        <p id="key-status" class="info-note"></p>
+        <label class="checkbox-label"
+          ><input name="clearKey" type="checkbox" /> حذف کلید ذخیره‌شده</label
+        >
+        <div class="modal-foot">
+          <button type="button" id="ping" class="secondary">
+            آزمایش اتصال ذخیره‌شده</button
+          ><button type="submit" class="primary">ذخیرهٔ تنظیمات</button>
+        </div>
+        <p id="settings-result" aria-live="polite" class="form-result"></p>
+      </form>
+    </dialog>
+    <dialog id="skill-dialog" class="modal">
+      <div class="modal-heading">
+        <h2>بررسی مهارت جدید</h2>
+        <button class="icon-button" data-close="skill-dialog" aria-label="بستن">
+          ×
+        </button>
+      </div>
+      <div id="skill-preview"></div>
+      <div class="modal-foot">
+        <button class="secondary" data-close="skill-dialog">انصراف</button
+        ><button id="confirm-skill" class="primary">
+          اعتماد و افزودن مهارت
+        </button>
+      </div>
+    </dialog>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <script type="module" src="app.mjs"></script>
+  </body>
+</html>

@@ -1,0 +1,28 @@
+{
+  "id": "node-testing",
+  "name": "Node Workshop",
+  "description": "خواندن پروژه‌های Node و اجرای تست با runtime همراه برنامه",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "id": "version",
+      "description": "نمایش نسخهٔ Node همراه برنامه",
+      "command": {
+        "program": "node",
+        "args": ["--version"],
+        "cwd": ".",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "id": "test",
+      "description": "اجرای تست‌های Node با test runner استاندارد",
+      "command": {
+        "program": "node",
+        "args": ["--test"],
+        "cwd": ".",
+        "timeoutMs": 60000
+      }
+    }
+  ]
+}

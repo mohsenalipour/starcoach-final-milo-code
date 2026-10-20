@@ -1,0 +1,28 @@
+{
+  "id": "project-review",
+  "name": "Change Review",
+  "description": "بازبینی تغییرات، معیارهای قبولی و مستندسازی",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "id": "status",
+      "description": "وضعیت فایل‌ها در پروژهٔ Git",
+      "command": {
+        "program": "git",
+        "args": ["status", "--short"],
+        "cwd": ".",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "id": "diff",
+      "description": "بررسی تغییرات کد در پروژهٔ Git",
+      "command": {
+        "program": "git",
+        "args": ["diff", "--stat"],
+        "cwd": ".",
+        "timeoutMs": 10000
+      }
+    }
+  ]
+}

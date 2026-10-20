@@ -1,0 +1,28 @@
+{
+  "id": "python-testing",
+  "name": "Python Bench",
+  "description": "بررسی و تست پروژه‌های پایتون با unittest",
+  "version": "1.0.0",
+  "tools": [
+    {
+      "id": "version",
+      "description": "بررسی Python نصب‌شده یا محیط مجازی پروژه",
+      "command": {
+        "program": "python",
+        "args": ["--version"],
+        "cwd": ".",
+        "timeoutMs": 10000
+      }
+    },
+    {
+      "id": "test",
+      "description": "اجرای unittest discovery",
+      "command": {
+        "program": "python",
+        "args": ["-m", "unittest", "discover", "-s", "tests", "-v"],
+        "cwd": ".",
+        "timeoutMs": 60000
+      }
+    }
+  ]
+}
