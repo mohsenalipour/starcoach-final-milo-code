@@ -1,0 +1,189 @@
+.top-actions {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.project-approval {
+  font-size: 11px;
+  border: 1px solid #303043;
+  border-radius: 9px;
+  padding: 7px 10px;
+}
+.project-approval.automatic {
+  color: #a6d4c0;
+  background: #17251f;
+  border-color: #304d40;
+}
+.project-delivery {
+  margin: 26px 0 12px;
+  padding: 20px;
+  border: 1px solid #323044;
+  border-radius: 16px;
+  background: #111119;
+  scroll-margin-block: 20px;
+}
+.delivery-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.delivery-heading h3 {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
+.delivery-eyebrow {
+  color: #9c95c3;
+  font-size: 11px;
+}
+.delivery-path {
+  display: block;
+  text-align: left;
+  width: 100%;
+  font:
+    12px/1.9 Consolas,
+    monospace;
+  color: #afa6db;
+  background: none;
+  border: 0;
+  padding: 10px 0;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.delivery-path:hover {
+  color: #ded7ff;
+  text-decoration: underline;
+}
+.delivery-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.delivery-files button {
+  font:
+    11px/1.6 Consolas,
+    monospace;
+  border: 1px solid #323043;
+  background: #1a1927;
+  color: #b5b9d0;
+  border-radius: 7px;
+  padding: 5px 9px;
+  cursor: pointer;
+}
+.project-permission-note {
+  font-size: 11px;
+  color: #9fc7b5;
+  margin-block: 12px 0;
+}
+.launch-controls {
+  margin-top: 18px;
+}
+.launch-controls label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 11px;
+  color: #9da4bd;
+}
+.launch-controls > div {
+  display: flex;
+  gap: 9px;
+}
+.launch-controls select {
+  flex: 1;
+  min-width: 0;
+  background: #191824;
+  color: #d0cce3;
+  border: 1px solid #363349;
+  border-radius: 9px;
+  padding: 9px;
+  font-size: 12px;
+}
+.launch-controls code {
+  display: block;
+  color: #8d96b1;
+  background: none;
+  font-size: 12px;
+  padding: 9px 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.application-panel {
+  margin-top: 12px;
+  border-top: 1px solid #303043;
+  padding-top: 15px;
+}
+.application-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.application-heading strong {
+  font-size: 13px;
+  flex: 1;
+}
+.application-heading span {
+  color: #9ba2b9;
+  font-size: 11px;
+}
+.application-heading span.app-running {
+  color: #a6d4c0;
+}
+.application-link {
+  display: inline-block;
+  color: #bcb0ff;
+  padding: 13px 0;
+  font:
+    13px/1.7 Consolas,
+    monospace;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-decoration: underline;
+}
+.application-output {
+  max-height: 210px;
+  overflow: auto;
+  background: #08080e;
+  border: 1px solid #292735;
+  border-radius: 9px;
+  color: #ccd1dd;
+  padding: 13px;
+  font:
+    12px/1.8 Consolas,
+    monospace;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  user-select: text;
+  margin: 12px 0;
+}
+.application-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.application-input input {
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #39334e;
+  border-radius: 9px;
+  padding: 10px;
+  background: #191722;
+  color: #e6e2f0;
+}
+.approval-actions .trust-project {
+  color: #d2c8ff;
+  border: 1px solid #6f608f;
+  background: #2c233b;
+}
+@media (max-width: 1200px) {
+  .top-actions .badge {
+    display: none;
+  }
+  .project-card {
+    min-width: 0;
+    flex: 1;
+  }
+  .project-delivery {
+    padding: 15px;
+  }
+}

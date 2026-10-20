@@ -6,6 +6,7 @@ const {
   dialog,
   safeStorage,
   session,
+  shell,
 } = require("electron");
 const fs = require("node:fs/promises");
 const path = require("node:path");
@@ -18,6 +19,7 @@ const { SkillRegistry } = require("./core/skills.cjs");
 const { RunStore } = require("./core/store.cjs");
 const { Settings } = require("./core/settings.cjs");
 const { createProject, continuationFrom } = require("./core/projects.cjs");
+const { AppRuntime, localURL, launchOptions } = require("./core/runtime.cjs");
 const { assert, keys, text, redact } = require("./core/protocol.cjs");
 app.setName("Milo Code");
 if (process.env.MILO_DATA_DIR)
@@ -29,6 +31,8 @@ let win,
   settings,
   skills,
   store,
+  runtime,
+  runtimeSmoke = null,
   harness = null,
   workspace = null,
   projectMode = "live",
@@ -49,6 +53,9 @@ function connect(provider, mode, connection = null) {
     mode,
     connection,
     continuation,
+    runtime,
+    projectApproval: () =>
+      settings.projectApproval(current.workspace.root).autoApproveCommands,
     skills,
     store,
     secrets: settings.allSecrets(),
@@ -81,6 +88,24 @@ async function select(rootPath, mode = "live") {
     project: await projectSummary(),
     mode,
     selection: settings.forProject(workspace.root),
+    resources: await resources(workspace),
+  };
+}
+async function viewedWorkspace(data = {}) {
+  keys(data, ["runId"]);
+  if (data.runId) return Workspace.open((await store.load(data.runId)).root);
+  assert(workspace, "ابتدا پروژه را انتخاب کن.");
+  return workspace;
+}
+async function resources(ws) {
+  return {
+    root: ws.root,
+    approval: settings.projectApproval(ws.root),
+    application: runtime.snapshot(ws.root),
+    launches: await launchOptions(
+      ws,
+      harness?.workspace.root === ws.root ? harness.state?.launch : null,
+    ),
   };
 }
 function ipc(name, handler) {
@@ -112,7 +137,128 @@ function register() {
     mode: projectMode,
     skills: skills.list(),
     dataPath: app.getPath("userData"),
+    resources: workspace ? await resources(workspace) : null,
   }));
+  ipc("resources", async (data) => resources(await viewedWorkspace(data)));
+  ipc("openProjectFolder", async (data) => {
+    const ws = await viewedWorkspace(data);
+    const error = await shell.openPath(ws.root);
+    assert(!error, error || "پوشه باز نشد.");
+    return true;
+  });
+  ipc("revealFile", async (data) => {
+    keys(data, ["runId", "path"]);
+    const ws = await viewedWorkspace(data.runId ? { runId: data.runId } : {});
+    shell.showItemInFolder(await ws.resolve(text(data.path, 500)));
+    return true;
+  });
+  ipc("setProjectApproval", async (data) => {
+    keys(data, ["root", "enabled", "runId", "nonce"]);
+    assert(
+      workspace && typeof data.enabled === "boolean",
+      "پروژه یا مجوز معتبر نیست.",
+    );
+    assert(
+      data.root === workspace.root,
+      "پروژه تغییر کرده؛ مجوز را روی پروژهٔ فعلی انتخاب کن.",
+    );
+    const targetRoot = workspace.root,
+      targetHarness = harness;
+    const pending = targetHarness?.gate.public();
+    if (data.enabled && pending)
+      assert(
+        pending.runId === data.runId && pending.nonce === data.nonce,
+        "این تأیید منقضی شده؛ درخواست فعلی را بررسی کن.",
+      );
+    const permission = await settings.setProjectApproval(
+      targetRoot,
+      data.enabled,
+    );
+    if (targetHarness) {
+      await targetHarness.event(
+        "project_permission",
+        data.enabled
+          ? "کاربر اجرای خودکار فرمان‌ها را برای این پروژه فعال کرد."
+          : "کاربر اجرای خودکار فرمان‌های پروژه را خاموش کرد.",
+        { actor: "human", ...permission },
+      );
+      if (
+        data.enabled &&
+        pending &&
+        targetHarness.gate.public()?.nonce === pending.nonce
+      )
+        await targetHarness.decide(pending.runId, pending.nonce, true);
+    }
+    return { ...permission, root: targetRoot };
+  });
+  ipc("startApp", async (data) => {
+    available();
+    keys(data, ["root", "optionId"]);
+    assert(workspace, "پروژه انتخاب نشده است.");
+    assert(
+      data.root === workspace.root,
+      "پروژه تغییر کرده؛ برنامه را از پروژهٔ فعلی اجرا کن.",
+    );
+    const targetWorkspace = workspace,
+      targetHarness = harness;
+    const option = (
+      await launchOptions(targetWorkspace, targetHarness?.state?.launch)
+    ).find((item) => item.id === data.optionId);
+    assert(option, "گزینهٔ اجرا تغییر کرده؛ فهرست را به‌روزرسانی کن.");
+    // The user clicks a labelled command in the output card; this is its one-shot approval.
+    if (targetHarness)
+      await targetHarness.event("approval", "کاربر دکمهٔ اجرای برنامه را زد.", {
+        actor: "human",
+        approved: true,
+        command: option.command || null,
+        path: option.path || null,
+      });
+    const result = option.path
+      ? await runtime.preview(targetWorkspace, option.path, option.title)
+      : await runtime.start(
+          targetWorkspace,
+          {
+            command: option.command,
+            title: option.title,
+            ...(option.url ? { url: option.url } : {}),
+          },
+          { extraPrograms: skills.extraPrograms() },
+        );
+    if (targetHarness) {
+      targetHarness.state.launch = result;
+      await targetHarness.event(
+        "application",
+        "اجرای برنامه با درخواست مستقیم کاربر.",
+        result,
+      );
+    }
+    return result;
+  });
+  ipc("appInput", async (data) => {
+    keys(data, ["id", "text", "eof"]);
+    assert(workspace, "پروژه انتخاب نشده است.");
+    return runtime.input(workspace.root, data.id, data.text, data.eof ?? false);
+  });
+  ipc("stopApp", async (data) => {
+    keys(data, ["id"]);
+    assert(workspace, "پروژه انتخاب نشده است.");
+    return runtime.stop(workspace.root, data.id);
+  });
+  ipc("refreshApp", async () => {
+    assert(workspace, "پروژه انتخاب نشده است.");
+    return runtime.refresh(workspace.root);
+  });
+  ipc("openApp", async (data) => {
+    keys(data, ["id", "runId"]);
+    const ws = await viewedWorkspace(data.runId ? { runId: data.runId } : {});
+    const app = await runtime.refresh(ws.root);
+    assert(
+      app?.id === data.id && app.url && app.status === "running",
+      "لینک این اجرا هنوز آماده نیست یا برنامه بسته شده است.",
+    );
+    await shell.openExternal(localURL(app.url).href);
+    return true;
+  });
   ipc("chooseProject", async () => {
     available();
     const chosen = await dialog.showOpenDialog(win, {
@@ -216,7 +362,13 @@ function register() {
     assert(typeof data.approved === "boolean", "تصمیم معتبر نیست.");
     return harness.decide(data.runId, data.nonce, data.approved);
   });
-  ipc("stop", async () => harness?.stop());
+  ipc("stop", async () => {
+    const result = await harness?.stop();
+    const application = workspace && runtime.snapshot(workspace.root);
+    if (application && ["running", "starting"].includes(application.status))
+      await runtime.stop(workspace.root, application.id);
+    return result;
+  });
   ipc("newTask", async () => {
     available();
     if (harness?.state) continuation = continuationFrom(harness.state);
@@ -258,6 +410,7 @@ function register() {
     available();
     const value = await settings.update(data);
     store.secrets = settings.allSecrets();
+    runtime.secrets = settings.allSecrets();
     return value;
   });
   ipc("ping", async (selection) =>
@@ -324,6 +477,20 @@ async function init() {
   store = new RunStore(path.join(data, "runs"), {
     secrets: settings.allSecrets(),
   });
+  runtime = new AppRuntime({ secrets: settings.allSecrets() });
+  runtime.on("change", (application) => send("application", application));
+  runtime.on("output", (chunk) => send("appOutput", chunk));
+  if (
+    process.env.MILO_SMOKE === "1" &&
+    process.env.MILO_SMOKE_RUNTIME === "1"
+  ) {
+    const scenario = await require("./core/desktop-smoke.cjs").desktopRuntime({
+      data,
+      runtime,
+    });
+    workspace = scenario.workspace;
+    runtimeSmoke = scenario.checks;
+  }
   session.defaultSession.setPermissionRequestHandler(
     (_wc, _permission, callback) => callback(false),
   );
@@ -352,25 +519,35 @@ async function init() {
   win.webContents.on("will-navigate", (event, url) => {
     if (url !== rendererURL) event.preventDefault();
   });
+  let closing = false,
+    closePending = false;
   win.on("close", (event) => {
-    if (harness?.busy) {
-      event.preventDefault();
-      void dialog
-        .showMessageBox(win, {
+    if (closing) return;
+    event.preventDefault();
+    if (closePending) return;
+    closePending = true;
+    void (async () => {
+      if (harness?.busy) {
+        const result = await dialog.showMessageBox(win, {
           type: "question",
           message: "اجرا هنوز فعال است. متوقف شود و برنامه بسته شود؟",
           buttons: ["ادامهٔ کار", "توقف و بستن"],
           defaultId: 0,
           cancelId: 0,
-        })
-        .then(async (result) => {
-          if (result.response === 1) {
-            await harness.stop();
-            await harness.job;
-            win.destroy();
-          }
         });
-    }
+        if (result.response !== 1) {
+          closePending = false;
+          return;
+        }
+        await harness.stop();
+        await harness.job;
+      }
+      await runtime.close();
+      closing = true;
+      win.destroy();
+    })().catch(() => {
+      closePending = false;
+    });
   });
   await win.loadFile(renderer);
   win.show();
@@ -394,7 +571,12 @@ async function init() {
           newProjectControl: !!q("#new-project"),
           taskEnabledWithoutProject: !packet.value.project && !q("#task").disabled && !q("#submit-task").disabled,
           welcomeHeadingClear: heading.height > 0 && heading.bottom <= composer.top,
-          noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth
+          noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth,
+          deliveryControls: !!q("#delivery-folder") && !!q("#show-program"),
+          projectApprovalControl: !!q("#project-approval"),
+          runtimeBridge: typeof window.milo.appInput === "function" && typeof window.milo.openApp === "function",
+          applicationPanelVisible: !q("#application-panel").hidden,
+          applicationLink: q("#application-link").getAttribute("href")
         };
       })`,
     );
@@ -408,11 +590,25 @@ async function init() {
       status.sidebarOnRight &&
         status.workspaceInitiallyHidden &&
         status.newProjectControl &&
-        status.taskEnabledWithoutProject &&
-        status.welcomeHeadingClear &&
+        (runtimeSmoke || status.taskEnabledWithoutProject) &&
+        (runtimeSmoke || status.welcomeHeadingClear) &&
         status.noHorizontalOverflow,
       "چیدمان صفحهٔ شروع یا کنترل‌های ساخت پروژه درست بارگذاری نشدند.",
     );
+    assert(
+      status.deliveryControls &&
+        status.projectApprovalControl &&
+        status.runtimeBridge,
+      "کنترل‌های پروژه و اجرای برنامه بارگذاری نشدند.",
+    );
+    if (runtimeSmoke) {
+      assert(
+        status.applicationPanelVisible &&
+          /^http:\/\/127\.0\.0\.1:\d+\//.test(status.applicationLink),
+        "پنل برنامه یا لینک اجرای آن نمایش داده نشد.",
+      );
+      status.runtime = runtimeSmoke;
+    }
     if (process.env.MILO_SMOKE_DEMO === "1")
       status.demo = await require("./core/desktop-smoke.cjs").desktopDemo({
         root,
@@ -429,7 +625,7 @@ async function init() {
         2,
       ),
     );
-    app.quit();
+    if (process.env.MILO_SMOKE_KEEP_OPEN !== "1") app.quit();
   }
 }
 const lock = app.requestSingleInstanceLock();

@@ -1,9 +1,9 @@
 {
   "date": "2026-10-20",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "platform": "Windows x64",
   "coreTests": {
-    "passed": 31,
+    "passed": 39,
     "failed": 0
   },
   "providerCatalog": {
@@ -11,7 +11,8 @@
     "liveModelCount": 369,
     "selectedModelPresent": true,
     "authenticatedMetisTested": false,
-    "authenticatedBoxAPITested": false
+    "authenticatedBoxAPITested": false,
+    "testedVersion": "1.1.0"
   },
   "offlineDemo": {
     "model": "explicit scripted provider",
@@ -36,12 +37,7 @@
     "packaged": true,
     "preloadBridge": true,
     "contentSecurityPolicy": true,
-    "providerProfiles": [
-      "avalai",
-      "metis",
-      "boxapi",
-      "custom"
-    ],
+    "providerProfiles": ["avalai", "metis", "boxapi", "custom"],
     "providerOptions": 4,
     "modelControl": true,
     "demoCompleted": true,
@@ -49,17 +45,22 @@
     "commandApprovals": 3,
     "approvalActor": "test-driver",
     "exitCode": 0,
-    "bundledNode": "24.22.0"
+    "bundledNode": "24.22.0",
+    "testedVersion": "1.3.0",
+    "interactivePersianInput": true,
+    "eofExitCode": 0,
+    "webHTTPStatus": 200,
+    "appStoppedOnWindowClose": true
   },
   "packageAudit": {
-    "matchingApplicationFiles": 39,
+    "matchingApplicationFiles": 42,
     "privateFiles": 0,
     "configuredKeyIncluded": false
   },
   "installer": {
-    "filename": "Milo-Code-Setup-1.2.0-x64.exe",
-    "bytes": 111558155,
-    "sha256": "37e5e8bfa69234b2b696c1b0e7e261829e5f8e55e77d8ea1bba696e6e85daedc"
+    "filename": "Milo-Code-Setup-1.3.0-x64.exe",
+    "bytes": 111568145,
+    "sha256": "923e8a46f7308e0eb2e4c36ef475b3d8c246492967b193f10f66a51ce9778044"
   },
   "liveCreation": {
     "provider": "AvalAI",
@@ -75,7 +76,8 @@
       "cli.cjs",
       "temperature.test.cjs",
       "README.md"
-    ]
+    ],
+    "testedVersion": "1.2.0"
   },
   "desktopLayout": {
     "sidebarOnRight": true,
@@ -83,7 +85,11 @@
     "newProjectControl": true,
     "taskEnabledWithoutProject": true,
     "welcomeHeadingClear": true,
-    "noHorizontalOverflow": true
+    "noHorizontalOverflow": true,
+    "deliveryControls": true,
+    "projectApprovalControl": true,
+    "runtimeBridge": true,
+    "applicationPanelVisible": true
   },
   "nativeUI": {
     "inspected": [
@@ -94,9 +100,40 @@
       "history-report",
       "continue-on-same-project"
     ],
-    "screenshots": [
-      "docs/desktop-home.jpg",
-      "docs/desktop-creation.jpg"
-    ]
+    "screenshots": ["docs/desktop-home.jpg", "docs/desktop-creation.jpg"],
+    "testedVersion": "1.2.0",
+    "currentVersionInspected": false,
+    "currentVersionReason": "Windows desktop locked; current controls checked by read-only desktop DOM smoke instead."
+  },
+  "liveLaunch": {
+    "version": "1.3.0",
+    "provider": "AvalAI",
+    "model": "deepseek-v4.1-flash",
+    "status": "completed",
+    "iterations": 5,
+    "corrections": 0,
+    "fileChanges": 0,
+    "launchedTool": "launch_app",
+    "browserReachable": true,
+    "survivedTaskCompletion": true,
+    "exitCode": 0,
+    "approvals": 3
+  },
+  "projectApproval": {
+    "defaultManual": true,
+    "isolatedPerProject": true,
+    "persistsAfterRestart": true,
+    "revocationTested": true,
+    "nonceGatePreserved": true
+  },
+  "programRuntime": {
+    "interactivePersianInput": true,
+    "eofExitCode": 0,
+    "webHTTPStatus": 200,
+    "appStoppedOnWindowClose": true,
+    "occupiedPortRejected": true,
+    "failedServerHasNoLink": true,
+    "closedPortLinkCleared": true,
+    "staticPreviewPrivatePathsBlocked": true
   }
 }

@@ -6,6 +6,15 @@ contextBridge.exposeInMainWorld("milo", {
   chooseProject: () => call("chooseProject"),
   createProject: (data) => call("createProject", data),
   continueRun: (id) => call("continueRun", id),
+  resources: (data) => call("resources", data),
+  setProjectApproval: (data) => call("setProjectApproval", data),
+  openProjectFolder: (data) => call("openProjectFolder", data),
+  revealFile: (data) => call("revealFile", data),
+  startApp: (data) => call("startApp", data),
+  stopApp: (data) => call("stopApp", data),
+  appInput: (data) => call("appInput", data),
+  refreshApp: () => call("refreshApp"),
+  openApp: (data) => call("openApp", data),
   createDemo: () => call("createDemo"),
   listFiles: () => call("listFiles"),
   readFile: (path) => call("readFile", path),
@@ -35,5 +44,15 @@ contextBridge.exposeInMainWorld("milo", {
     const listener = (_e, data) => callback(data);
     ipcRenderer.on("milo:output", listener);
     return () => ipcRenderer.removeListener("milo:output", listener);
+  },
+  onApplication: (callback) => {
+    const listener = (_e, data) => callback(data);
+    ipcRenderer.on("milo:application", listener);
+    return () => ipcRenderer.removeListener("milo:application", listener);
+  },
+  onAppOutput: (callback) => {
+    const listener = (_e, data) => callback(data);
+    ipcRenderer.on("milo:appOutput", listener);
+    return () => ipcRenderer.removeListener("milo:appOutput", listener);
   },
 });

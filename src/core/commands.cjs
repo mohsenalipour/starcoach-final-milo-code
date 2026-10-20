@@ -32,7 +32,40 @@ function childEnv() {
     NO_COLOR: "1",
     PYTHONIOENCODING: "utf-8",
     PYTHONUTF8: "1",
+    PYTHONUNBUFFERED: "1",
   };
+}
+function terminateChild(child) {
+  if (!child?.pid || child.exitCode !== null || child.signalCode)
+    return Promise.resolve();
+  return new Promise((resolve) => {
+    if (process.platform === "win32") {
+      execFile(
+        path.join(
+          process.env.SystemRoot || "C:\\Windows",
+          "System32",
+          "taskkill.exe",
+        ),
+        ["/PID", String(child.pid), "/T", "/F"],
+        { windowsHide: true, timeout: 5000 },
+        () => {
+          try {
+            child.kill("SIGKILL");
+          } catch {}
+          resolve();
+        },
+      );
+    } else {
+      try {
+        process.kill(-child.pid, "SIGKILL");
+      } catch {
+        try {
+          child.kill("SIGKILL");
+        } catch {}
+      }
+      resolve();
+    }
+  });
 }
 async function locate(name) {
   if (process.platform === "win32") {
@@ -67,6 +100,17 @@ class CommandRunner {
   constructor({ secrets = [] } = {}) {
     this.secrets = secrets;
     this.child = null;
+  }
+  async prepareApp(input, workspace, extraPrograms = []) {
+    // A running app has no short-command deadline. Accept the legacy optional
+    // field, but do not attach a test timeout to a persistent process.
+    const prepared = await this.prepare(
+      { ...input, timeoutMs: 60000 },
+      workspace,
+      extraPrograms,
+    );
+    delete prepared.spec.timeoutMs;
+    return prepared;
   }
   async prepare(input, workspace, extraPrograms = []) {
     const spec = command(input);
@@ -223,4 +267,10 @@ class CommandRunner {
     });
   }
 }
-module.exports = { CommandRunner, childEnv, builtinPrograms, locate };
+module.exports = {
+  CommandRunner,
+  childEnv,
+  builtinPrograms,
+  locate,
+  terminateChild,
+};

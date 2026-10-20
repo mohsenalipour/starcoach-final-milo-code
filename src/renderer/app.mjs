@@ -1,5 +1,6 @@
 import { icon, hydrateIcons } from "./icons.mjs";
 import { ModelControls } from "./model-controls.mjs";
+import { ProjectTools } from "./project-tools.mjs";
 const $ = (id) => document.getElementById(id),
   api = window.milo;
 const labels = {
@@ -87,6 +88,17 @@ const modelControls = new ModelControls({
   },
   onSelection: () => render(),
 });
+const projectTools = new ProjectTools({
+  call,
+  guard,
+  toast,
+  context: () => ({ project, state, busy: !!busy() }),
+  show: () => {
+    page = "task";
+    closeWorkbench();
+    render();
+  },
+});
 function busy() {
   return state && !state.readOnly && active.has(state.status);
 }
@@ -119,6 +131,7 @@ async function adopt(result) {
   mode = result.mode || "live";
   demoProject = mode === "offline-demo";
   setProject(result.project);
+  projectTools.adopt(result.resources || null);
   modelControls.update(settings, result.selection || settings.defaultSelection);
   $("remember-model").checked = true;
   closeEditor();
@@ -140,7 +153,13 @@ function render() {
     readonly = !!state?.readOnly,
     hasPlan = !!state?.plan;
   const inbox = page === "inbox";
-  $("agent-panel").classList.toggle("is-empty", !state && !inbox);
+  const hasDelivery =
+    projectTools.value?.root === project?.root &&
+    (projectTools.value?.application || projectTools.value?.launches.length);
+  $("agent-panel").classList.toggle(
+    "is-empty",
+    !state && !inbox && !hasDelivery,
+  );
   $("task-screen").hidden = inbox;
   $("inbox-screen").hidden = !inbox;
   $("inbox-empty").hidden = !!state?.approval && !readonly;
@@ -245,7 +264,7 @@ function render() {
           ? "active"
           : "";
   });
-  $("welcome").hidden = !!state;
+  $("welcome").hidden = !!state || !!hasDelivery;
   for (const key of ["plan", "activity", "review"])
     $(key + "-view").hidden = !state || key !== view;
   document
@@ -263,6 +282,7 @@ function render() {
   renderApproval();
   renderChanges();
   updateSave();
+  projectTools.render();
 }
 function renderPlan() {
   const target = $("plan-view"),
@@ -568,7 +588,11 @@ function renderApproval() {
   const title = el(
     "h3",
     "",
-    approval.verification ? "اجازهٔ اجرای تست پذیرش" : "اجازهٔ اجرای فرمان",
+    approval.application
+      ? "اجازهٔ باز کردن برنامه"
+      : approval.verification
+        ? "اجازهٔ اجرای تست پذیرش"
+        : "اجازهٔ اجرای فرمان",
   );
   title.prepend(glyph("shield"));
   box.append(
@@ -620,6 +644,40 @@ function renderApproval() {
       ),
     );
   box.append(buttons);
+  if (approval.application)
+    box.append(
+      el(
+        "p",
+        "",
+        "این برنامه بعد از پایان کار ایجنت باز می‌ماند؛ می‌توانی جداگانه متوقفش کنی.",
+      ),
+    );
+  buttons.append(
+    btn(
+      "تأیید همهٔ فرمان‌های این پروژه",
+      "trust-project",
+      async () => {
+        buttons.querySelectorAll("button").forEach((button) => {
+          button.disabled = true;
+        });
+        try {
+          await projectTools.setApproval(true);
+        } finally {
+          buttons.querySelectorAll("button").forEach((button) => {
+            button.disabled = false;
+          });
+        }
+      },
+      "shield",
+    ),
+  );
+  box.append(
+    el(
+      "p",
+      "approval-scope",
+      "گزینهٔ «همهٔ فرمان‌ها» یک‌بار ذخیره می‌شود و شامل اجرا، نصب وابستگی و تست‌های بعدی همین پروژه است؛ از نوار بالا قابل لغو است.",
+    ),
+  );
   if (lastCommand !== approval.nonce) {
     lastCommand = approval.nonce;
     appendTerminal(
@@ -746,7 +804,7 @@ function renderSkills() {
     el(
       "p",
       "info-note",
-      "هر مهارت شامل دستورالعمل و ابزارهای تعریف‌شده در skill.json است. فرمان مهارت هم قبل از اجرا تأیید جداگانه می‌گیرد.",
+      "هر مهارت شامل دستورالعمل و ابزارهای تعریف‌شده در skill.json است. فرمان مهارت از مجوز اجرای همین پروژه پیروی می‌کند.",
     ),
   );
   for (const skill of skills) {
@@ -835,15 +893,15 @@ function renderHistory() {
         mode = state.mode;
         closeWorkbench();
         closeEditor();
-        $("project-name").textContent = run.root.split(/[\\/]/).at(-1);
-        $("project-path").textContent = run.root;
-        $("project-path").title = run.root;
+        setProject({ name: run.root.split(/[\\/]/).at(-1), root: run.root });
+        projectTools.adopt(null);
         view = "review";
         render();
         setWork("changes", { reveal: false });
         await refreshFiles();
         rebuildTerminal();
         await refreshHistory();
+        await projectTools.refresh();
       },
     );
     b.append(el("strong", "", run.title));
@@ -989,6 +1047,7 @@ $("new-task").onclick = () =>
     mode = boot.mode;
     demoProject = mode === "offline-demo";
     setProject(boot.project);
+    projectTools.adopt(boot.resources || null);
     modelControls.update(settings, boot.selection || settings.defaultSelection);
     $("remember-model").checked = true;
     render();
@@ -1114,13 +1173,25 @@ api.onState((next) => {
     }
   }
   render();
+  const event = next.events.at(-1);
+  if (
+    ["application", "project_permission"].includes(event?.type) ||
+    (was !== next.status &&
+      ["completed", "needs_attention", "stopped"].includes(next.status))
+  )
+    void guard(() => projectTools.refresh());
   if (
     next.events.at(-1)?.type === "tool_result" &&
     next.observations.at(-1)?.tool === "write_file"
   )
-    void guard(refreshFiles);
+    void guard(async () => {
+      await refreshFiles();
+      await projectTools.refresh();
+    });
 });
 api.onOutput((chunk) => appendTerminal(chunk.text));
+api.onApplication((application) => projectTools.application(application));
+api.onAppOutput((chunk) => projectTools.output(chunk));
 async function boot() {
   hydrateIcons();
   const data = await call("boot");
@@ -1131,6 +1202,7 @@ async function boot() {
   skills = data.skills;
   state = data.state;
   setProject(data.project);
+  projectTools.adopt(data.resources || null);
   renderSkills();
   render();
   await Promise.all([refreshHistory(), refreshFiles()]);

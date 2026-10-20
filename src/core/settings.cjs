@@ -19,6 +19,7 @@ class Settings {
         modelsFetchedAt: null,
       })),
       projects: {},
+      projectPermissions: {},
       skills: [],
     };
     this.apiKeys = new Map();
@@ -64,6 +65,12 @@ class Settings {
           !Array.isArray(saved.projects)
         )
           this.value.projects = saved.projects;
+        if (
+          saved.projectPermissions &&
+          typeof saved.projectPermissions === "object" &&
+          !Array.isArray(saved.projectPermissions)
+        )
+          this.value.projectPermissions = saved.projectPermissions;
       } else if (saved.baseURL) {
         endpoint(saved.baseURL);
         const match =
@@ -181,6 +188,23 @@ class Settings {
     this.value.projects[this.projectKey(root)] = selected;
     await this.persist();
     return selected;
+  }
+  projectApproval(root) {
+    const saved = this.value.projectPermissions[this.projectKey(root)];
+    return {
+      autoApproveCommands: saved?.autoApproveCommands === true,
+      updatedAt: saved?.updatedAt || null,
+    };
+  }
+  async setProjectApproval(root, enabled) {
+    assert(typeof enabled === "boolean", "مجوز پروژه باید روشن یا خاموش باشد.");
+    const permission = {
+      autoApproveCommands: enabled,
+      updatedAt: new Date().toISOString(),
+    };
+    this.value.projectPermissions[this.projectKey(root)] = permission;
+    await this.persist();
+    return { ...permission };
   }
   async update(input) {
     keys(input, [

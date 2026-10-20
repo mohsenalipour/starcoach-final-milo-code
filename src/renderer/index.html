@@ -10,6 +10,7 @@
     <title>Milo Code — دستیار کدنویسی</title>
     <link rel="stylesheet" href="styles.css" />
     <link rel="stylesheet" href="layout.css" />
+    <link rel="stylesheet" href="project-tools.css" />
   </head>
   <body>
     <div class="app-shell">
@@ -76,7 +77,7 @@
             <i data-icon="settings"></i> تنظیمات مدل
             <span id="connection-dot" class="dot"></span>
           </button>
-          <div class="course-note"><span>Milo Code</span><span>v1.2</span></div>
+          <div class="course-note"><span>Milo Code</span><span>v1.3</span></div>
         </div>
       </aside>
       <main class="main-shell">
@@ -91,6 +92,25 @@
             </div>
           </div>
           <div class="top-actions">
+            <button
+              id="project-approval"
+              class="quiet project-approval"
+              hidden
+              title="با روشن کردن این گزینه، فرمان‌های این پروژه با دسترسی حساب تو و بدون تأیید جداگانه اجرا می‌شوند. هر زمان می‌توانی خاموشش کنی."
+            >
+              فرمان‌ها: با تأیید
+            </button>
+            <button
+              id="open-project-folder"
+              class="icon-button"
+              title="باز کردن پوشهٔ پروژه در ویندوز"
+              hidden
+            >
+              <i data-icon="folder"></i>
+            </button>
+            <button id="show-program" class="quiet" hidden>
+              <i data-icon="play"></i> برنامه
+            </button>
             <span id="mode-badge" class="badge">آمادهٔ شروع</span>
             <button id="export" class="quiet" disabled>
               <i data-icon="download"></i> گزارش
@@ -153,6 +173,105 @@
                     <i data-icon="plus"></i> ادامه روی همین پروژه
                   </button>
                 </div>
+                <section
+                  id="project-delivery"
+                  class="project-delivery"
+                  hidden
+                  aria-label="برنامه و فایل‌های پروژه"
+                >
+                  <div class="delivery-heading">
+                    <div>
+                      <span class="delivery-eyebrow">خروجی قابل استفاده</span>
+                      <h3>برنامه و فایل‌های تو</h3>
+                    </div>
+                    <button id="delivery-folder" class="secondary">
+                      <i data-icon="folder"></i> باز کردن پوشه
+                    </button>
+                  </div>
+                  <button
+                    id="delivery-path"
+                    class="delivery-path"
+                    dir="ltr"
+                    title="باز کردن پوشهٔ پروژه"
+                  ></button>
+                  <div id="delivery-files" class="delivery-files"></div>
+                  <p
+                    id="project-permission-note"
+                    class="project-permission-note"
+                    hidden
+                  >
+                    اجرای خودکار برای همین پروژه روشن است. از نوار بالا می‌توانی
+                    خاموشش کنی.
+                  </p>
+                  <div id="launch-controls" class="launch-controls" hidden>
+                    <label for="launch-option">اجرا یا پیش‌نمایش</label>
+                    <div>
+                      <select
+                        id="launch-option"
+                        aria-label="برنامهٔ قابل اجرا"
+                        dir="ltr"
+                      ></select
+                      ><button id="launch-program" class="primary">
+                        <i data-icon="play"></i> اجرا
+                      </button>
+                    </div>
+                    <code id="launch-command" dir="ltr"></code>
+                  </div>
+                  <p id="launch-hint" class="empty-note">
+                    برای اجرا بنویس «برنامه‌ای که ساختی را اجرا کن».
+                  </p>
+                  <div id="application-panel" class="application-panel" hidden>
+                    <div class="application-heading">
+                      <strong id="application-title"></strong
+                      ><span id="application-status"></span
+                      ><button
+                        id="refresh-application"
+                        class="quiet"
+                        title="بررسی آماده‌شدن لینک"
+                      >
+                        بررسی لینک</button
+                      ><button id="stop-application" class="stop-button">
+                        <i data-icon="stop"></i> توقف برنامه
+                      </button>
+                    </div>
+                    <a
+                      id="application-link"
+                      class="application-link"
+                      href="#"
+                      dir="ltr"
+                      hidden
+                    ></a>
+                    <p id="application-notice" class="empty-note" hidden></p>
+                    <pre
+                      id="application-output"
+                      class="application-output"
+                      dir="ltr"
+                      tabindex="0"
+                      aria-label="خروجی برنامه"
+                    ></pre>
+                    <form
+                      id="application-input-form"
+                      class="application-input"
+                      hidden
+                    >
+                      <input
+                        id="application-input"
+                        maxlength="4000"
+                        autocomplete="off"
+                        placeholder="ورودی برنامه را اینجا بنویس…"
+                        aria-label="ورودی برنامه"
+                      /><button type="submit" class="secondary">ارسال</button
+                      ><button
+                        id="application-eof"
+                        type="button"
+                        class="quiet"
+                        title="بستن ورودی استاندارد برنامه"
+                      >
+                        پایان ورودی
+                      </button>
+                    </form>
+                  </div>
+                </section>
               </div>
             </div>
             <div id="inbox-screen" class="inbox-screen" hidden>

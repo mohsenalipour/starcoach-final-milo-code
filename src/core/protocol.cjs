@@ -86,6 +86,9 @@ const toolNames = [
   "write_file",
   "run_command",
   "run_skill",
+  "launch_app",
+  "preview_file",
+  "app_status",
   "verify",
 ];
 function action(value, steps) {

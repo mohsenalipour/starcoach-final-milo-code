@@ -71,6 +71,8 @@ class Harness extends EventEmitter {
     mode = "live",
     connection = null,
     continuation = null,
+    runtime = null,
+    projectApproval = () => false,
     maxIterations = 28,
     maxCorrections = 6,
     secrets = [],
@@ -84,6 +86,8 @@ class Harness extends EventEmitter {
       mode,
       connection,
       continuation,
+      runtime,
+      projectApproval,
       maxIterations,
       maxCorrections,
       secrets,
@@ -217,6 +221,7 @@ class Harness extends EventEmitter {
       verification: this.state.verification,
       iteration: this.state.iterations,
       corrections: this.state.corrections,
+      application: this.runtime?.snapshot(this.workspace.root) || null,
     });
   }
   async loop() {
@@ -375,6 +380,62 @@ class Harness extends EventEmitter {
       return this.execute(this.state.plan.verification, { verification: true });
     }
     if (name === "run_command") return this.execute(args);
+    if (name === "launch_app") {
+      keys(args, ["command", "title", "url"]);
+      assert(this.runtime, "اجرای تعاملی در این محیط در دسترس نیست.");
+      const prepared = await this.runner.prepareApp(
+        args.command,
+        this.workspace,
+        this.skills.extraPrograms(),
+      );
+      if (!(await this.authorize(prepared, { application: true })))
+        return { error: "کاربر اجرای برنامه را نپذیرفت.", denied: true };
+      assert(!this.controller.signal.aborted, "عملیات متوقف شد.", "ABORTED");
+      await this.status(
+        "running",
+        "در حال باز کردن برنامه؛ اجرای آن مستقل از تست ادامه پیدا می‌کند.",
+      );
+      const result = await this.runtime.start(this.workspace, args, {
+        prepared,
+      });
+      this.state.launch = result;
+      this.state.verification = null;
+      const ok =
+        ["running", "starting"].includes(result.status) ||
+        result.exitCode === 0;
+      await this.event(
+        "application",
+        ok
+          ? "برنامه اجرا شد؛ خروجی و کنترل آن در بخش برنامه در دسترس است."
+          : "شروع برنامه با خطا تمام شد؛ خروجی واقعی برای بررسی ذخیره شد.",
+        result,
+      );
+      return {
+        ...result,
+        ok,
+        ...(!ok
+          ? {
+              error: result.error || `برنامه با کد ${result.exitCode} بسته شد.`,
+            }
+          : {}),
+      };
+    }
+    if (name === "preview_file") {
+      keys(args, ["path", "title"]);
+      assert(this.runtime, "پیش‌نمایش در این محیط در دسترس نیست.");
+      const result = await this.runtime.preview(
+        this.workspace,
+        args.path,
+        args.title,
+      );
+      this.state.launch = result;
+      await this.event("application", "پیش‌نمایش وب محلی آماده است.", result);
+      return result;
+    }
+    if (name === "app_status") {
+      keys(args, []);
+      return this.runtime?.refresh(this.workspace.root) || null;
+    }
     if (name === "run_skill") {
       keys(args, ["skill", "tool"]);
       const tool = await this.skills.tool(args.skill, args.tool);
@@ -390,25 +451,7 @@ class Harness extends EventEmitter {
       this.workspace,
       this.skills.extraPrograms(),
     );
-    const awaiting = this.gate.request(
-      {
-        runId: this.state.id,
-        command: prepared.spec,
-        executable: prepared.executable,
-        effectiveArgs: prepared.args,
-        cwd: prepared.cwd,
-        verification,
-        skill,
-      },
-      this.controller.signal,
-    );
-    await this.status(
-      "awaiting_approval",
-      verification
-        ? "فرمان تست نهایی آماده است؛ برای اجرای آن تأیید لازم است."
-        : "اجرای این فرمان نیاز به تأیید کاربر دارد.",
-    );
-    if (!(await awaiting))
+    if (!(await this.authorize(prepared, { verification, skill })))
       return { error: "کاربر اجرای این فرمان را نپذیرفت.", denied: true };
     assert(!this.controller.signal.aborted, "عملیات متوقف شد.", "ABORTED");
     await this.status(
@@ -438,6 +481,44 @@ class Harness extends EventEmitter {
       result,
     );
     return result;
+  }
+  async authorize(
+    prepared,
+    { verification = false, skill = null, application = false } = {},
+  ) {
+    if (this.projectApproval()) {
+      await this.event(
+        "approval",
+        "فرمان با مجوز ذخیره‌شدهٔ همین پروژه تأیید شد.",
+        {
+          actor: "project-policy",
+          approved: true,
+          command: prepared.spec,
+          application,
+        },
+      );
+      return true;
+    }
+    const awaiting = this.gate.request(
+      {
+        runId: this.state.id,
+        command: prepared.spec,
+        executable: prepared.executable,
+        effectiveArgs: prepared.args,
+        cwd: prepared.cwd,
+        verification,
+        skill,
+        application,
+      },
+      this.controller.signal,
+    );
+    await this.status(
+      "awaiting_approval",
+      verification
+        ? "فرمان تست نهایی آماده است؛ برای اجرای آن تأیید لازم است."
+        : "اجرای این فرمان نیاز به تأیید کاربر دارد.",
+    );
+    return awaiting;
   }
   async decide(runId, nonce, approved, { actor = "human" } = {}) {
     this.gate.decide(runId, nonce, approved);

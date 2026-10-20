@@ -1,7 +1,7 @@
 {
   "name": "milo-code",
   "productName": "Milo Code",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "An independent coding harness with planning, tools, skills, correction and human approval.",
   "author": "mohsenalipour",
   "license": "MIT",
@@ -13,6 +13,7 @@
     "test:demo": "node scripts/demo-smoke.cjs",
     "test:live": "node scripts/live-smoke.cjs",
     "test:create": "node scripts/create-smoke.cjs",
+    "test:launch": "node scripts/launch-smoke.cjs",
     "icons": "node scripts/make-icon.cjs",
     "build:dir": "node scripts/make-icon.cjs && electron-builder --win dir --x64",
     "build:win": "node scripts/make-icon.cjs && electron-builder --win nsis --x64"
