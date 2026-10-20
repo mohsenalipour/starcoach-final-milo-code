@@ -30,7 +30,9 @@ let project = null,
   mode = "live",
   demoProject = false,
   view = "plan",
+  page = "task",
   work = "files",
+  historyItems = [],
   editorFile = null,
   editorDirty = false,
   preview = null,
@@ -96,8 +98,9 @@ function commandText(c) {
 }
 function setProject(p) {
   project = p;
-  $("project-name").textContent = p?.name || "پروژه‌ای انتخاب نشده";
-  $("project-path").textContent = p?.root || "یک پوشه یا دموی آماده انتخاب کن";
+  $("project-name").textContent = p?.name || "فضای کار تازه";
+  $("project-path").textContent =
+    p?.root || "ایده‌ات را بنویس؛ پروژه‌ات را می‌سازیم.";
   $("project-path").title = p?.root || "";
 }
 function closeEditor() {
@@ -111,6 +114,8 @@ function closeEditor() {
 async function adopt(result) {
   if (!result) return;
   state = null;
+  page = "task";
+  closeWorkbench();
   mode = result.mode || "live";
   demoProject = mode === "offline-demo";
   setProject(result.project);
@@ -122,7 +127,7 @@ async function adopt(result) {
   render();
   await Promise.all([refreshFiles(), refreshHistory()]);
   if (mode === "live") modelControls.autoFetch();
-  if (result.task) toast("پروژهٔ نمونهٔ تازه آماده شد. «ساخت پلن» را بزن.");
+  if (result.task) toast("پروژهٔ نمونهٔ تازه آماده شد. «شروع کار» را بزن.");
 }
 async function demo() {
   await adopt(await call("createDemo"));
@@ -134,13 +139,30 @@ function render() {
   const isBusy = !!busy(),
     readonly = !!state?.readOnly,
     hasPlan = !!state?.plan;
+  const inbox = page === "inbox";
+  $("agent-panel").classList.toggle("is-empty", !state && !inbox);
+  $("task-screen").hidden = inbox;
+  $("inbox-screen").hidden = !inbox;
+  $("inbox-empty").hidden = !!state?.approval && !readonly;
+  $("task-form").hidden = inbox || isBusy || readonly;
+  $("starter-ideas").hidden = inbox || !!state;
+  for (const id of ["run-header", "run-pipeline", "run-tabs"])
+    $(id).hidden = !state;
+  $("request-summary").hidden = !state;
+  $("request-summary").textContent = state?.task || "";
+  $("history-context").hidden = !readonly;
+  $("approval-count").hidden = !state?.approval || readonly;
+  $("stop").hidden = !isBusy;
+  $("export").hidden = !state;
+  $("new-project").disabled = isBusy;
+  syncNavigation();
   $("stop").disabled = !isBusy;
   $("export").disabled = !state;
   $("new-task").disabled = isBusy;
   $("choose-project").disabled = isBusy;
   $("demo").disabled = isBusy;
   $("open-settings").disabled = isBusy;
-  $("submit-task").disabled = !project || isBusy || readonly;
+  $("submit-task").disabled = isBusy || readonly;
   $("task").disabled = isBusy || readonly;
   $("model-mode").hidden = !demoProject;
   $("model-mode").value = mode;
@@ -170,8 +192,8 @@ function render() {
     : isBusy
       ? "گام‌ها و تأییدها را در بالا دنبال کن"
       : project
-        ? "Ctrl + Enter برای ساخت پلن"
-        : "اول پروژه را انتخاب کن";
+        ? "روی همین پروژه ادامه بده · Ctrl + Enter برای شروع"
+        : "ایده‌ات را بنویس؛ یک پروژهٔ تازه ساخته می‌شود.";
   $("mode-badge").textContent = state
     ? state.mode === "offline-demo"
       ? "دموی آفلاین · مدل اسکریپتی"
@@ -198,8 +220,8 @@ function render() {
   $("step-count").textContent = fa(state?.plan?.steps.length || 0);
   $("change-count").textContent = fa(state?.changes.length || 0);
   $("footer-status").textContent = state
-    ? `RUN ${state.id.slice(0, 8)}  /  ${state.iterations} actions  /  ${state.corrections} corrections`
-    : "Windows Desktop / Electron";
+    ? `${fa(state.iterations)} گام · ${fa(state.corrections)} اصلاح`
+    : "آمادهٔ کار";
   document.querySelectorAll("[data-phase]").forEach((node) => {
     const phase = node.dataset.phase;
     let current =
@@ -781,12 +803,27 @@ async function inspectSkill() {
   $("skill-dialog").showModal();
 }
 async function refreshHistory() {
-  const rows = await call("history"),
-    target = $("history");
+  historyItems = await call("history");
+  renderHistory();
+}
+function renderHistory() {
+  const query = $("history-search").value.trim().toLocaleLowerCase();
+  const rows = historyItems.filter((r) =>
+    (r.title + " " + r.root + " " + (r.connection?.model || ""))
+      .toLocaleLowerCase()
+      .includes(query),
+  );
+  const target = $("history");
   target.replaceChildren();
   if (!rows.length)
     target.append(
-      el("p", "muted empty-note", "اجراها و گزارش تست اینجا می‌مانند."),
+      el(
+        "p",
+        "muted empty-note",
+        query
+          ? "کاری با این عبارت پیدا نشد."
+          : "اولین کارت را از کادر روبه‌رو شروع کن.",
+      ),
     );
   for (const run of rows) {
     const b = btn(
@@ -794,13 +831,16 @@ async function refreshHistory() {
       "history-row" + (state?.id === run.id ? " selected" : ""),
       async () => {
         state = await call("loadRun", run.id);
+        page = "task";
+        mode = state.mode;
+        closeWorkbench();
         closeEditor();
         $("project-name").textContent = run.root.split(/[\\/]/).at(-1);
         $("project-path").textContent = run.root;
         $("project-path").title = run.root;
         view = "review";
         render();
-        setWork("changes");
+        setWork("changes", { reveal: false });
         await refreshFiles();
         rebuildTerminal();
         await refreshHistory();
@@ -845,15 +885,94 @@ function rebuildTerminal() {
       );
     }
 }
-function setWork(key) {
+function syncNavigation() {
+  $("nav-task").classList.toggle(
+    "active",
+    page === "task" && $("workbench").hidden,
+  );
+  $("inbox-button").classList.toggle("active", page === "inbox");
+  document
+    .querySelectorAll("[data-open-work]")
+    .forEach((b) =>
+      b.classList.toggle(
+        "active",
+        !$("workbench").hidden && b.dataset.openWork === work,
+      ),
+    );
+}
+function closeWorkbench() {
+  $("workbench").hidden = true;
+  document.body.classList.remove("drawer-open");
+}
+function setWork(key, { reveal = true } = {}) {
   work = key;
-  for (const name of ["files", "changes", "skills"])
+  if (reveal) {
+    $("workbench").hidden = false;
+    document.body.classList.add("drawer-open");
+  }
+  $("workbench-title").textContent = {
+    files: "فایل‌های پروژه",
+    changes: "تغییرات کد",
+    skills: "مهارت‌های ایجنت",
+    output: "خروجی فرمان‌ها",
+  }[key];
+  for (const name of ["files", "changes", "skills", "output"])
     $(name + "-work").hidden = name !== key;
   document
     .querySelectorAll("[data-work]")
     .forEach((b) => b.classList.toggle("active", b.dataset.work === key));
   if (key === "skills") renderSkills();
+  syncNavigation();
 }
+$("nav-task").onclick = () => {
+  page = "task";
+  closeWorkbench();
+  render();
+};
+$("inbox-button").onclick = () => {
+  page = "inbox";
+  closeWorkbench();
+  render();
+};
+$("close-workbench").onclick = () => {
+  closeWorkbench();
+  syncNavigation();
+};
+$("show-output").onclick = () => setWork("output");
+document.querySelectorAll("[data-open-work]").forEach((b) => {
+  b.onclick = () => {
+    page = "task";
+    setWork(b.dataset.openWork);
+    render();
+  };
+});
+document.querySelectorAll("[data-prompt]").forEach((b) => {
+  b.onclick = () => {
+    $("task").value = b.dataset.prompt;
+    $("task").focus();
+  };
+});
+$("new-project").onclick = () => {
+  if ($("new-project").disabled) return;
+  $("project-dialog").showModal();
+  $("project-title").select();
+};
+$("project-form").onsubmit = (event) => {
+  event.preventDefault();
+  void guard(async () => {
+    await adopt(
+      await call("createProject", { name: $("project-title").value }),
+    );
+    $("project-dialog").close();
+    $("task").focus();
+  });
+};
+$("continue-run").onclick = () =>
+  guard(async () => {
+    await adopt(await call("continueRun", state.id));
+    $("task").focus();
+    toast("همان پروژه آماده است؛ درخواست بعدی را بنویس.");
+  });
 $("choose-project").onclick = () => guard(choose);
 $("welcome-project").onclick = () => guard(choose);
 $("demo").onclick = () => guard(demo);
@@ -862,9 +981,13 @@ $("new-task").onclick = () =>
   guard(async () => {
     await call("newTask");
     state = null;
+    page = "task";
+    closeWorkbench();
     closeEditor();
     $("task").value = "";
     const boot = await call("boot");
+    mode = boot.mode;
+    demoProject = mode === "offline-demo";
     setProject(boot.project);
     modelControls.update(settings, boot.selection || settings.defaultSelection);
     $("remember-model").checked = true;
@@ -872,6 +995,7 @@ $("new-task").onclick = () =>
     await refreshFiles();
   });
 $("refresh-history").onclick = () => guard(refreshHistory);
+$("history-search").oninput = () => renderHistory();
 $("refresh-files").onclick = () =>
   guard(async () => {
     if (editorFile) await openFile(editorFile.path);
@@ -916,6 +1040,15 @@ $("task-form").onsubmit = (event) => {
     $("submit-task").disabled = true;
     view = "plan";
     try {
+      if (!project) {
+        await adopt(await call("createProject", { name: "پروژه جدید" }));
+        $("task").value = task;
+      }
+      if (state) {
+        await call("newTask");
+        state = null;
+      }
+      page = "task";
       await call("plan", {
         task,
         mode,
@@ -975,7 +1108,8 @@ api.onState((next) => {
     void guard(refreshHistory);
     if (next.status === "completed") {
       view = "review";
-      setWork("changes");
+      $("task").value = "";
+      $("task").placeholder = "چه چیزی به این پروژه اضافه کنیم؟";
       toast("اجرا با تست موفق و بازبینی نهایی تمام شد.");
     }
   }

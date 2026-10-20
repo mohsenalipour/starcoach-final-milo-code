@@ -4,6 +4,8 @@ const call = (name, ...args) => ipcRenderer.invoke("milo:" + name, ...args);
 contextBridge.exposeInMainWorld("milo", {
   boot: () => call("boot"),
   chooseProject: () => call("chooseProject"),
+  createProject: (data) => call("createProject", data),
+  continueRun: (id) => call("continueRun", id),
   createDemo: () => call("createDemo"),
   listFiles: () => call("listFiles"),
   readFile: (path) => call("readFile", path),

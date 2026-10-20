@@ -30,21 +30,22 @@ flowchart TD
 
 ## اجزا و قراردادها
 
-| جزء                  | مسئولیت                                                                      |
-| -------------------- | ---------------------------------------------------------------------------- |
-| `src/main.cjs`       | چرخهٔ پنجره، native dialog، IPC، انتخاب پروژه و مدل، تنظیمات                 |
-| `src/preload.cjs`    | API صریح رابط؛ بدون دسترسی عمومی Node یا generic IPC                         |
-| `core/harness.cjs`   | state machine مستقل، بودجهٔ اجرا و اصلاح، approval و completion gate         |
-| `core/provider.cjs`  | Chat Completions، schema JSON، یک فرصت اصلاح فرمت، timeout/abort             |
-| `core/catalog.cjs`   | preset سرویس‌ها، GET models با کلید همان سرویس، محدودیت پاسخ و نرمال‌سازی شناسه |
-| `core/workspace.cjs` | containment، private-path filtering، UTF-8 I/O، hash conflict و fingerprint  |
-| `core/commands.cjs`  | resolve ابزار، spawn بدون shell، محیط محدود، خروجی و زمان محدود، توقف فرایند |
-| `core/skills.cjs`    | بارگذاری declarative skills، hash و اعتماد، ابزارهای runtime                 |
-| `core/settings.cjs`  | کلید رمز‌شدهٔ مستقل، مهاجرت v1، فهرست مدل‌ها و پیش‌فرض عمومی/پروژه             |
-| `core/store.cjs`     | snapshot اتمیک در صف، تاریخچه و پاک‌سازی کلیدهای قابل‌شناسایی                |
-| `core/demo.cjs`      | مدل اسکریپتی صریح دمو، با همان ابزار و تست واقعی                             |
-| `renderer/`          | رابط فارسی، پلن قابل ویرایش، source editor، قبل/بعد، event log و output      |
-| `renderer/model-controls.mjs` | پنل پرووایدرها، جستجوی مدل‌ها و انتخاب برای درخواست فعلی              |
+| جزء                           | مسئولیت                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------- |
+| `src/main.cjs`                | چرخهٔ پنجره، native dialog، IPC، انتخاب پروژه و مدل، تنظیمات                    |
+| `src/preload.cjs`             | API صریح رابط؛ بدون دسترسی عمومی Node یا generic IPC                            |
+| `core/harness.cjs`            | state machine مستقل، بودجهٔ اجرا و اصلاح، approval و completion gate            |
+| `core/provider.cjs`           | Chat Completions، schema JSON، یک فرصت اصلاح فرمت، timeout/abort                |
+| `core/catalog.cjs`            | preset سرویس‌ها، GET models با کلید همان سرویس، محدودیت پاسخ و نرمال‌سازی شناسه |
+| `core/projects.cjs`           | ساخت پوشهٔ خالی مستقل و تهیهٔ خلاصهٔ زمینهٔ درخواست قبلی                        |
+| `core/workspace.cjs`          | containment، private-path filtering، UTF-8 I/O، hash conflict و fingerprint     |
+| `core/commands.cjs`           | resolve ابزار، spawn بدون shell، محیط محدود، خروجی و زمان محدود، توقف فرایند    |
+| `core/skills.cjs`             | بارگذاری declarative skills، hash و اعتماد، ابزارهای runtime                    |
+| `core/settings.cjs`           | کلید رمز‌شدهٔ مستقل، مهاجرت v1، فهرست مدل‌ها و پیش‌فرض عمومی/پروژه              |
+| `core/store.cjs`              | snapshot اتمیک در صف، تاریخچه و پاک‌سازی کلیدهای قابل‌شناسایی                   |
+| `core/demo.cjs`               | مدل اسکریپتی صریح دمو، با همان ابزار و تست واقعی                                |
+| `renderer/`                   | رابط فارسی، پلن قابل ویرایش، source editor، قبل/بعد، event log و output         |
+| `renderer/model-controls.mjs` | پنل پرووایدرها، جستجوی مدل‌ها و انتخاب برای درخواست فعلی                        |
 
 قرارداد پلن شامل `title`, `summary`, `steps[2..8]`, `acceptance[1..6]` و فرمان `verification` است. قرارداد عملیات یا یک `tool` با `step`, `args`, `message` است یا `finish` با خلاصه. متن توضیح کوتاه فعالیت برای کاربر است، نه زنجیرهٔ فکر خصوصی مدل.
 
@@ -52,7 +53,7 @@ flowchart TD
 
 ## State و دوام
 
-State شامل شناسه، درخواست، root، mode، connection، plan، status، currentStep، iterations، corrections، observations، changes، backups، verification، review، summary و events است. `connection` فقط شناسه و نام پرووایدر و مدل را نگه می‌دارد؛ کلید در state قرار نمی‌گیرد. وضعیت‌ها:
+State شامل شناسه، درخواست، root، mode، connection، continuation، plan، status، currentStep، iterations، corrections، observations، changes، backups، verification، review، summary و events است. `connection` فقط شناسه و نام پرووایدر و مدل را نگه می‌دارد؛ کلید در state قرار نمی‌گیرد. `continuation` خلاصهٔ درخواست و نتیجهٔ قبلی همان پروژه است. وضعیت‌ها:
 
 ```text
 planning → awaiting_plan → running ⇄ awaiting_approval
@@ -76,6 +77,12 @@ schema نسخهٔ ۲ شامل `providers`، `defaultSelection`، `projects` و `
 
 ## اعتبار موفقیت و بازیابی
 
+درخواست می‌تواند ساخت برنامه از پوشهٔ خالی، توسعهٔ قابلیت یا اصلاح کد موجود باشد. `createProject` پوشهٔ تازه و یکتا زیر دادهٔ برنامه می‌سازد و هیچ فایل اولیه یا جواب آماده‌ای در آن قرار نمی‌دهد. اگر در صفحهٔ شروع پروژه‌ای انتخاب نشده باشد، رابط پیش از ساخت پلن، همین مسیر را فراخوانی می‌کند. مدل طبق پلن، تمام فایل‌های لازم را با `write_file` می‌نویسد.
+
+پس از اتمام، درخواست تکمیلی یک اجرای تازه با خلاصهٔ درخواست قبلی و فایل‌های فعلی می‌سازد. تاریخچه فقط گزارش را می‌خواند؛ `continueRun` با اقدام صریح کاربر پوشهٔ همان گزارش و هویت مدلش را انتخاب می‌کند. approval و subprocess قدیمی از سر گرفته نمی‌شوند.
+
+رابط یک گفتگوی مرکزی و نوار سمت راست دارد. فایل‌ها، تغییرات، مهارت‌ها و خروجی فقط در پنل انتخابی باز می‌شوند. در اجرای فعال، ورودی تازه پنهان می‌شود تا فضای پلن و تأیید در دسترس باشد. تشخیص CLI دسکتاپ به‌صورت فقط‌خواندنی، راست‌بودن نوار، فاصلهٔ تیتر و ورودی و نبود اسکرول افقی را بررسی می‌کند.
+
 - حد پیش‌فرض ۲۸ عملیات و ۶ چرخهٔ خطا/اصلاح است. رسیدن به حد یا خطای مدل، `needs_attention` می‌سازد.
 - هر subprocess تأیید یک‌باره با nonce و runId می‌گیرد. رد درخواست نتیجه‌ای به مدل برمی‌گرداند؛ فرمان اجرا نمی‌شود.
 - stdout/stderr واقعی با exit code، timeout، زمان اجرا و truncation ثبت می‌شود.
@@ -86,6 +93,8 @@ schema نسخهٔ ۲ شامل `providers`، `defaultSelection`، `projects` و `
 - تغییرات به‌صورت خودکار rollback یا commit نمی‌شوند. کاربر نسخهٔ قبل/بعد را می‌بیند و می‌تواند دستی اصلاح کند.
 
 ## مرز اعتماد
+
+در اتصال Chat Completions، `response_format:json_object` درخواست می‌شود و schema همچنان داخل هارنس اعتبارسنجی می‌شود. اگر مسیر با HTTP 400/422 این درخواست را رد کند، فقط پارامتر فرمت حذف و درخواست محدود تکرار می‌شود؛ مدل و کلید عوض نمی‌شوند. خروجی با `finish_reason:length` هیچ‌گاه اجرا نمی‌شود و یک فرصت اصلاح با سقف بیشتر دارد. خطای گذرای اتصال نیز فقط یک بار تکرار می‌شود. [قرارداد JSON در AvalAI](https://docs.avalai.org/en/guides/structured-outputs).
 
 `contextIsolation:true`, `nodeIntegration:false`, `sandbox:true`؛ CSP فقط فایل‌های محلی برنامه را می‌پذیرد. خروجی مدل، source و log با textContent/textarea نمایش داده می‌شوند. پنجرهٔ تازه، navigation خارجی و permissionهای مرورگر رد می‌شوند. IPC فقط از renderer اصلی با frame URL دقیق پذیرفته می‌شود. متن پروژه و مهارت برای مدل untrusted task data است.
 

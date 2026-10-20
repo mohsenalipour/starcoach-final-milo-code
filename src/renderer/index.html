@@ -7,41 +7,49 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'"
     />
-    <title>Milo Code — میز کار ایجنت کدنویس</title>
+    <title>Milo Code — دستیار کدنویسی</title>
     <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="layout.css" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
+      <aside class="sidebar" aria-label="پروژه و تاریخچه">
         <div class="brand" dir="ltr">
-          <img src="../../assets/mark.svg" alt="" width="38" height="38" />
           <div>
             <strong>Milo<span>Code</span></strong
-            ><small>YOUR CODING WORKSHOP</small>
+            ><small>فضایی برای ساختن</small>
           </div>
+          <img src="../../assets/mark.svg" alt="" width="34" height="34" />
         </div>
-        <div class="sidebar-actions">
-          <button id="choose-project" class="primary">
-            <i data-icon="folder"></i> باز کردن پروژه</button
-          ><button id="demo" class="secondary">
-            <i data-icon="play"></i> دموی آماده و آفلاین
-            <span class="small-label">۳ دقیقه</span>
+        <button id="new-task" class="nav-button new-task">
+          <i data-icon="plus"></i> کار جدید
+        </button>
+        <nav class="main-nav" aria-label="بخش‌های برنامه">
+          <button id="nav-task" class="nav-button active">
+            <i data-icon="code"></i> گفتگو
+          </button>
+          <button id="inbox-button" class="nav-button">
+            <i data-icon="shield"></i> تأییدها
+            <span id="approval-count" class="nav-count" hidden>۱</span>
+          </button>
+          <button class="nav-button" data-open-work="files">
+            <i data-icon="folder"></i> فایل‌ها
+          </button>
+          <button class="nav-button" data-open-work="skills">
+            <i data-icon="layers"></i> مهارت‌ها
+          </button>
+        </nav>
+        <div class="sidebar-project-actions">
+          <button id="new-project" class="quiet">
+            <i data-icon="plus"></i> پروژهٔ جدید
+          </button>
+          <button id="choose-project" class="quiet">
+            <i data-icon="folder"></i> باز کردن پروژه
           </button>
         </div>
-        <div class="section-label">فضای کار <span>WORKSPACE</span></div>
-        <div class="project-card">
-          <span class="folder-tile"><i data-icon="code"></i></span>
-          <div>
-            <strong id="project-name">پروژه‌ای انتخاب نشده</strong
-            ><small id="project-path">یک پوشه یا دموی آماده انتخاب کن</small>
-          </div>
-        </div>
-        <button id="new-task" class="nav-button">
-          <i data-icon="plus"></i> درخواست تازه
-        </button>
         <div class="history-heading">
-          <div class="section-label">تاریخچهٔ اجراها</div>
-          <button
+          <span class="section-label">کارهای اخیر</span
+          ><button
             id="refresh-history"
             class="icon-button"
             title="به‌روزرسانی تاریخچه"
@@ -49,107 +57,132 @@
             <i data-icon="refresh"></i>
           </button>
         </div>
+        <input
+          id="history-search"
+          class="history-search"
+          type="search"
+          placeholder="جستجوی کارها…"
+          aria-label="جستجوی تاریخچه"
+        />
         <div id="history" class="history-list">
-          <p class="muted empty-note">اجراها و گزارش تست اینجا می‌مانند.</p>
+          <p class="empty-note">اولین کارت را از کادر روبه‌رو شروع کن.</p>
         </div>
         <div class="sidebar-foot">
+          <button id="demo" class="nav-button">
+            <i data-icon="play"></i> دموی آموزشی
+            <span class="small-label">آفلاین</span>
+          </button>
           <button id="open-settings" class="nav-button">
             <i data-icon="settings"></i> تنظیمات مدل
             <span id="connection-dot" class="dot"></span>
           </button>
-          <div class="course-note">
-            <span class="dot mint"></span> پروژهٔ نهایی استارکوچ
-            <span>v1.1</span>
-          </div>
+          <div class="course-note"><span>Milo Code</span><span>v1.2</span></div>
         </div>
       </aside>
       <main class="main-shell">
         <header class="topbar">
-          <div class="breadcrumb" dir="ltr">
-            <span>MILO /</span><strong>Code workspace</strong>
+          <div class="project-card">
+            <i data-icon="folder"></i>
+            <div>
+              <strong id="project-name">فضای کار تازه</strong
+              ><small id="project-path"
+                >ایده‌ات را بنویس؛ پروژه‌ات را می‌سازیم.</small
+              >
+            </div>
           </div>
           <div class="top-actions">
-            <span id="mode-badge" class="badge">آمادهٔ شروع</span
-            ><button id="export" class="quiet" disabled>
-              <i data-icon="download"></i> گزارش اجرا</button
-            ><button id="stop" class="stop-button" disabled>
+            <span id="mode-badge" class="badge">آمادهٔ شروع</span>
+            <button id="export" class="quiet" disabled>
+              <i data-icon="download"></i> گزارش
+            </button>
+            <button id="stop" class="stop-button" disabled>
               <i data-icon="stop"></i> توقف
             </button>
           </div>
         </header>
         <div class="work-grid">
-          <section class="agent-panel">
-            <div class="panel-heading">
-              <div>
-                <span class="eyebrow">FROM INTENT TO VERIFIED CODE</span>
-                <h1>میز کار ایجنت</h1>
-              </div>
-              <div id="run-status" class="status-chip">
-                <span class="dot"></span><span>منتظر درخواست</span>
-              </div>
-            </div>
-            <div class="pipeline" aria-label="مراحل هارنس">
-              <div data-phase="plan"><i data-icon="plan"></i> پلن</div>
-              <span>←</span>
-              <div data-phase="tools"><i data-icon="code"></i> ابزار</div>
-              <span>←</span>
-              <div data-phase="test"><i data-icon="check"></i> تست و اصلاح</div>
-              <span>←</span>
-              <div data-phase="review"><i data-icon="shield"></i> بازبینی</div>
-            </div>
-            <div class="agent-tabs">
-              <button class="active" data-view="plan">
-                پلن و پیشرفت <span id="step-count">۰</span></button
-              ><button data-view="activity">
-                رویدادها <span id="event-count">۰</span></button
-              ><button data-view="review">نتیجه و تست</button>
-            </div>
-            <div id="agent-scroll" class="agent-scroll">
-              <div id="welcome" class="welcome">
-                <div class="welcome-orbit">
-                  <i data-icon="spark"></i><span class="orbit-dot one"></span
-                  ><span class="orbit-dot two"></span>
+          <section id="agent-panel" class="agent-panel is-empty">
+            <div id="task-screen" class="task-screen">
+              <div id="run-header" class="panel-heading" hidden>
+                <h1>گفتگو و پیشرفت کار</h1>
+                <div id="run-status" class="status-chip">
+                  <span class="dot"></span><span>منتظر درخواست</span>
                 </div>
-                <span class="eyebrow">A HARNESS. A REAL WORKSPACE.</span>
-                <h2>یک مسئله بده.<br /><em>مسیر حل را ببین.</em></h2>
-                <p>
-                  از برنامه‌ریزی تا ویرایش کد و تست واقعی؛<br />همهٔ گام‌ها
-                  روبه‌روی توست.
-                </p>
-                <div class="welcome-options">
-                  <button id="welcome-demo">
-                    <i data-icon="play"></i><strong>دموی اصلاح باگ</strong
-                    ><small>بدون اینترنت، با تست واقعی</small
-                    ><span>↗</span></button
-                  ><button id="welcome-project">
-                    <i data-icon="folder"></i><strong>پروژهٔ خودت</strong
-                    ><small>پوشه را انتخاب کن و مسئله را بگو</small
-                    ><span>↗</span>
+              </div>
+              <div
+                id="run-pipeline"
+                class="pipeline"
+                aria-label="مراحل کار"
+                hidden
+              >
+                <div data-phase="plan"><i data-icon="plan"></i> پلن</div>
+                <span>←</span>
+                <div data-phase="tools"><i data-icon="code"></i> اجرا</div>
+                <span>←</span>
+                <div data-phase="test">
+                  <i data-icon="check"></i> تست و اصلاح
+                </div>
+                <span>←</span>
+                <div data-phase="review"><i data-icon="shield"></i> نتیجه</div>
+              </div>
+              <div id="run-tabs" class="agent-tabs" hidden>
+                <button class="active" data-view="plan">
+                  پلن <span id="step-count">۰</span></button
+                ><button data-view="activity">
+                  فعالیت‌ها <span id="event-count">۰</span></button
+                ><button data-view="review">نتیجه و تست</button
+                ><button id="show-output" class="output-link">
+                  <i data-icon="terminal"></i> خروجی
+                </button>
+              </div>
+              <div id="agent-scroll" class="agent-scroll">
+                <div id="welcome" class="welcome">
+                  <span class="welcome-mark"><i data-icon="spark"></i></span>
+                  <h2>چی می‌خوای بسازیم؟</h2>
+                  <p>یک ایده، یک قابلیت تازه، یا کدی که به کمک نیاز دارد.</p>
+                </div>
+                <div id="request-summary" class="request-summary" hidden></div>
+                <div id="plan-view" class="view" hidden></div>
+                <div id="activity-view" class="view" hidden></div>
+                <div id="review-view" class="view" hidden></div>
+                <div id="history-context" class="history-context" hidden>
+                  <span
+                    >این نتیجه ذخیره شده است؛ می‌توانی کار را روی همین پروژه
+                    ادامه بدهی.</span
+                  ><button id="continue-run" class="secondary">
+                    <i data-icon="plus"></i> ادامه روی همین پروژه
                   </button>
                 </div>
-                <div class="trust-note">
-                  <i data-icon="shield"></i> فرمان‌ها با تأیید تو اجرا می‌شوند.
-                </div>
               </div>
-              <div id="plan-view" class="view" hidden></div>
-              <div id="activity-view" class="view" hidden></div>
-              <div id="review-view" class="view" hidden></div>
+            </div>
+            <div id="inbox-screen" class="inbox-screen" hidden>
+              <h2>تأییدها</h2>
+              <div id="inbox-empty" class="inbox-empty">
+                <i data-icon="check"></i><strong>چیزی منتظر تأیید نیست</strong>
+                <p>
+                  هر وقت اجرای فرمان به اجازهٔ تو نیاز داشته باشد، اینجا
+                  می‌بینی.
+                </p>
+              </div>
             </div>
             <div id="approval" class="approval" hidden></div>
             <form id="task-form" class="composer">
-              <label for="task"
-                >درخواست تو
-                <span id="composer-hint">اول پروژه را انتخاب کن</span></label
-              ><textarea
+              <label for="task" class="composer-label"
+                ><span id="composer-hint"
+                  >ایده‌ات را بنویس؛ یک پروژهٔ تازه ساخته می‌شود.</span
+                ></label
+              >
+              <textarea
                 id="task"
                 rows="3"
-                placeholder="مثلاً: اشکال تابع را پیدا کن، اصلاحش کن و تست‌های مرزی را اجرا کن…"
+                placeholder="مثلاً یک وب‌سایت مدیریت کارها با رابط فارسی بساز و تستش کن…"
                 maxlength="6000"
+                aria-label="درخواست کدنویسی"
               ></textarea>
               <div id="run-connection" class="run-connection">
                 <div class="run-connection-fields">
                   <label
-                    >پرووایدر<select
+                    >سرویس<select
                       id="run-provider"
                       aria-label="پرووایدر این درخواست"
                     ></select
@@ -163,8 +196,8 @@
                       placeholder="جستجو یا شناسهٔ مدل"
                       aria-label="مدل این درخواست"
                   /></label>
-                  <datalist id="run-model-list"></datalist>
-                  <button
+                  <datalist id="run-model-list"></datalist
+                  ><button
                     id="run-refresh-models"
                     type="button"
                     class="icon-button"
@@ -182,7 +215,7 @@
               </div>
               <div class="composer-foot">
                 <span id="model-label"
-                  ><span class="dot"></span> مدل متصل نشده</span
+                  ><span class="dot"></span> مدل را انتخاب کن</span
                 ><select
                   id="model-mode"
                   class="model-mode"
@@ -195,33 +228,74 @@
                   id="submit-task"
                   type="submit"
                   class="primary"
-                  disabled
+                  title="شروع با Ctrl+Enter"
                 >
-                  ساخت پلن <i data-icon="arrow"></i>
+                  شروع کار <i data-icon="arrow"></i>
                 </button>
               </div>
             </form>
-          </section>
-          <section class="workspace-panel">
-            <div class="workspace-heading">
-              <div>
-                <i data-icon="layers"></i><strong>پروژه و خروجی</strong>
-              </div>
+            <div id="starter-ideas" class="starter-ideas">
               <button
-                id="refresh-files"
-                class="icon-button"
-                title="خواندن دوبارهٔ فایل‌ها"
+                data-prompt="یک وب‌سایت مدیریت کارها با رابط فارسی و راست‌به‌چپ بساز. افزودن، تکمیل و حذف کار و ذخیره در مرورگر داشته باشد. کد کامل، راهنمای اجرا و تست مناسب را خودت بساز."
               >
-                <i data-icon="refresh"></i>
+                <i data-icon="code"></i> یک وب‌سایت بساز
               </button>
+              <button
+                data-prompt="یک ابزار خط فرمان تبدیل واحد دما با Node.js و بدون پکیج خارجی بساز. تبدیل سلسیوس، فارنهایت و کلوین، مدیریت ورودی نامعتبر، تست و راهنمای اجرا داشته باشد."
+              >
+                <i data-icon="terminal"></i> یک ابزار بساز
+              </button>
+              <button
+                data-prompt="ساختار پروژهٔ فعلی را بررسی کن. یک قابلیت کوچک و کاربردی پیشنهاد بده، پلن قابل بررسی بنویس و پس از تأیید آن را همراه تست پیاده‌سازی کن."
+              >
+                <i data-icon="plus"></i> قابلیت اضافه کن
+              </button>
+              <button
+                data-prompt="پروژهٔ فعلی را بخوان، خطاهای منطقی و حالت‌های مرزی را بررسی کن، اشکال پیدا‌شده را با تست بازتولید و اصلاح کن."
+              >
+                <i data-icon="check"></i> اشکال را پیدا کن
+              </button>
+              <div class="welcome-links">
+                <button id="welcome-project">
+                  <i data-icon="folder"></i> باز کردن پروژهٔ موجود</button
+                ><span>·</span
+                ><button id="welcome-demo">
+                  <i data-icon="play"></i> آشنایی با یک دموی کوتاه
+                </button>
+              </div>
+            </div>
+          </section>
+          <section
+            id="workbench"
+            class="workspace-panel"
+            hidden
+            aria-label="فایل‌ها و ابزارهای پروژه"
+          >
+            <div class="workspace-heading">
+              <strong id="workbench-title">فایل‌های پروژه</strong>
+              <div>
+                <button
+                  id="refresh-files"
+                  class="icon-button"
+                  title="خواندن دوبارهٔ فایل‌ها"
+                >
+                  <i data-icon="refresh"></i></button
+                ><button
+                  id="close-workbench"
+                  class="icon-button"
+                  title="بستن پنل"
+                >
+                  ×
+                </button>
+              </div>
             </div>
             <div class="workspace-tabs">
               <button data-work="files" class="active">فایل‌ها</button
               ><button data-work="changes">
                 تغییرات <span id="change-count">۰</span></button
               ><button data-work="skills">
-                مهارت‌ها <span id="skill-count">۳</span>
-              </button>
+                مهارت‌ها <span id="skill-count">۳</span></button
+              ><button data-work="output">خروجی</button>
             </div>
             <div id="files-work" class="work-view">
               <div id="file-list" class="file-list">
@@ -235,9 +309,9 @@
                   </button>
                 </div>
                 <div id="editor-empty" class="editor-empty">
-                  <i data-icon="code"></i><strong>کد، در دسترس تو</strong>
-                  <p>فایلی را برای دیدن یا ویرایش مستقیم انتخاب کن.</p>
-                  <span>UTF-8 · ویرایش با کنترل تداخل نسخه‌ها</span>
+                  <i data-icon="code"></i
+                  ><strong>فایل‌های پروژه، کنار گفتگو</strong>
+                  <p>فایلی را برای دیدن یا ویرایش انتخاب کن.</p>
                 </div>
                 <textarea
                   id="editor"
@@ -246,38 +320,69 @@
                   dir="ltr"
                   hidden
                 ></textarea>
-                <div id="editor-info" class="editor-info">
-                  ویرایش دستی در زمان توقف یا انتظار تأیید در دسترس است.
-                </div>
+                <div id="editor-info" class="editor-info">ذخیره با Ctrl+S</div>
               </div>
             </div>
             <div id="changes-work" class="work-view change-view" hidden></div>
             <div id="skills-work" class="work-view skills-view" hidden></div>
-            <div class="terminal-heading">
-              <span dir="ltr"><i data-icon="terminal"></i> RUN OUTPUT</span
-              ><span id="terminal-status">خروجی واقعی فرمان‌ها</span
-              ><button
-                id="clear-terminal"
-                class="icon-button"
-                title="پاک‌کردن نمایش خروجی"
-              >
-                <i data-icon="clear"></i>
-              </button>
+            <div id="output-work" class="work-view output-view" hidden>
+              <div class="terminal-heading">
+                <span id="terminal-status">خروجی واقعی فرمان‌ها</span
+                ><button
+                  id="clear-terminal"
+                  class="icon-button"
+                  title="پاک‌کردن نمایش خروجی"
+                >
+                  <i data-icon="clear"></i>
+                </button>
+              </div>
+              <pre id="terminal" class="terminal" dir="ltr">
+هنوز فرمانی اجرا نشده است.</pre>
             </div>
-            <pre id="terminal" class="terminal" dir="ltr">
-Milo Code is ready.
-Open a project or start the offline workshop.</pre
-            >
           </section>
         </div>
         <footer class="statusbar">
-          <span
-            ><span class="dot mint"></span> هارنس مستقل · ابزار واقعی · کنترل
-            انسانی</span
-          ><span id="footer-status" dir="ltr">Windows Desktop / Electron</span>
+          <span id="footer-status" dir="ltr">Milo Code</span
+          ><span
+            >Ctrl + Enter <span class="footer-separator">·</span> شروع کار</span
+          >
         </footer>
       </main>
     </div>
+    <dialog id="project-dialog" class="modal project-dialog">
+      <div class="modal-heading">
+        <h2>پروژهٔ تازه</h2>
+        <button
+          class="icon-button"
+          data-close="project-dialog"
+          aria-label="بستن"
+        >
+          ×
+        </button>
+      </div>
+      <p class="muted">
+        یک پوشهٔ خالی می‌سازیم؛ ایده‌ات را بنویس تا ایجنت کدش را بسازد.
+      </p>
+      <form id="project-form">
+        <label for="project-title">نام پروژه</label
+        ><input
+          id="project-title"
+          name="name"
+          value="پروژه جدید"
+          maxlength="80"
+          required
+        />
+        <p class="info-note">
+          پروژه در پوشهٔ داده‌های Milo Code ذخیره می‌شود. برای کار در محل
+          دلخواه، از «باز کردن پروژه» یک پوشه انتخاب کن.
+        </p>
+        <div class="modal-foot">
+          <button type="button" class="secondary" data-close="project-dialog">
+            انصراف</button
+          ><button type="submit" class="primary">ساخت پروژه</button>
+        </div>
+      </form>
+    </dialog>
     <dialog id="settings-dialog" class="modal">
       <div class="modal-heading">
         <div>

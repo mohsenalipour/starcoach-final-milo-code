@@ -36,8 +36,9 @@ class ModelProvider {
     this.apiKey = apiKey;
     this.fetch = fetchImpl;
     this.timeoutMs = timeoutMs;
+    this.jsonMode = true;
   }
-  async request(system, data, validate, { signal } = {}) {
+  async request(system, data, validate, { signal, maxTokens = 6000 } = {}) {
     assert(
       this.apiKey && this.model,
       "ابتدا مدل و کلید API را در تنظیمات وارد کن.",
@@ -47,6 +48,7 @@ class ModelProvider {
       { role: "system", content: rules + system },
       { role: "user", content: JSON.stringify(data) },
     ];
+    let retriedConnection = false;
     for (let attempt = 0; attempt < 2; attempt++) {
       const timeout = AbortSignal.timeout(this.timeoutMs),
         combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
@@ -61,13 +63,30 @@ class ModelProvider {
           body: JSON.stringify({
             model: this.model,
             messages,
-            max_tokens: 6000,
+            max_tokens: maxTokens,
             temperature: 0.15,
+            ...(this.jsonMode
+              ? { response_format: { type: "json_object" } }
+              : {}),
           }),
           signal: combined,
         });
       } catch (e) {
         if (signal?.aborted) throw new Error("عملیات متوقف شد.");
+        if (
+          !retriedConnection &&
+          !timeout.aborted &&
+          [
+            "UND_ERR_CONNECT_TIMEOUT",
+            "ECONNRESET",
+            "ETIMEDOUT",
+            "EAI_AGAIN",
+          ].includes(e.cause?.code || e.code)
+        ) {
+          retriedConnection = true;
+          attempt--;
+          continue;
+        }
         throw new Error(
           timeout.aborted
             ? "مهلت پاسخ مدل تمام شد. اتصال یا مدل را بررسی کن."
@@ -76,6 +95,11 @@ class ModelProvider {
       }
       if (!response.ok) {
         await response.body?.cancel();
+        if (this.jsonMode && [400, 422].includes(response.status)) {
+          this.jsonMode = false;
+          attempt--;
+          continue;
+        }
         throw new Error(
           `سرویس مدل خطای HTTP ${response.status} داد. تنظیمات و اعتبار حساب را بررسی کن.`,
         );
@@ -83,9 +107,16 @@ class ModelProvider {
       const body = await response.json();
       const content = body.choices?.[0]?.message?.content;
       try {
+        assert(
+          body.choices?.[0]?.finish_reason !== "length",
+          "پاسخ مدل پیش از کامل‌شدن قطع شد. مدل با ظرفیت خروجی بیشتر انتخاب کن یا درخواست را کوچک‌تر کن.",
+          "MODEL_OUTPUT_LIMIT",
+        );
         return validate(parseJSON(content));
       } catch (error) {
         if (attempt) throw error;
+        if (error.code === "MODEL_OUTPUT_LIMIT")
+          maxTokens = Math.min(maxTokens * 2, 16000);
         messages.push(
           {
             role: "assistant",
@@ -97,7 +128,7 @@ class ModelProvider {
             content:
               "Your JSON/schema was invalid: " +
               error.message +
-              ". Return only a corrected JSON object using the required schema.",
+              ". Return only one complete corrected JSON object using the required schema. No XML, DSML tags, native tool calls, or prose. For write_file use one compact file, with normal JSON string escaping so decoded source has real newlines.",
           },
         );
       }
@@ -105,7 +136,7 @@ class ModelProvider {
   }
   plan(context, options) {
     return this.request(
-      'Create a concise actionable coding plan before any edits. Inspect the supplied tree/manifests. Choose a meaningful existing test command, or a meaningful test you will create if none exists. Never use a print/echo as verification. Plan JSON: {title:string,summary:string,steps:string[2..8],acceptance:string[1..6],verification:{program:string,args:string[],cwd:".",timeoutMs:60000}}.',
+      'Create a concise actionable coding plan before any edits. This is a general coding workspace: implement new projects from an empty folder, add features, or fix existing code as the user requests. If the project is empty, plan to CREATE the complete runnable implementation, meaningful tests, and setup/use instructions; do not wait for starter code. Prefer a small dependency-free implementation where suitable. Node is bundled; package installation via npm requires human approval. Inspect supplied tree/manifests and any continuation summary, but re-read current files before edits. Choose a meaningful existing test command, or a meaningful test you will create if none exists. Never use a print/echo as verification. Plan JSON: {title:string,summary:string,steps:string[2..8],acceptance:string[1..6],verification:{program:string,args:string[],cwd:".",timeoutMs:60000}}.',
       context,
       plan,
       options,

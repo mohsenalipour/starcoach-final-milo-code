@@ -17,6 +17,7 @@ const { DemoProvider, createDemo, demoTask } = require("./core/demo.cjs");
 const { SkillRegistry } = require("./core/skills.cjs");
 const { RunStore } = require("./core/store.cjs");
 const { Settings } = require("./core/settings.cjs");
+const { createProject, continuationFrom } = require("./core/projects.cjs");
 const { assert, keys, text, redact } = require("./core/protocol.cjs");
 app.setName("Milo Code");
 if (process.env.MILO_DATA_DIR)
@@ -30,7 +31,8 @@ let win,
   store,
   harness = null,
   workspace = null,
-  projectMode = "live";
+  projectMode = "live",
+  continuation = null;
 let importing = null;
 const available = () =>
   assert(
@@ -46,6 +48,7 @@ function connect(provider, mode, connection = null) {
     provider,
     mode,
     connection,
+    continuation,
     skills,
     store,
     secrets: settings.allSecrets(),
@@ -59,13 +62,23 @@ function connect(provider, mode, connection = null) {
   });
   return current;
 }
+async function projectSummary() {
+  const result = await workspace.summary();
+  if (
+    path.dirname(workspace.root).toLowerCase() ===
+    path.join(app.getPath("userData"), "projects").toLowerCase()
+  )
+    result.name = result.name.replace(/-[a-f0-9]{8}$/, "");
+  return result;
+}
 async function select(rootPath, mode = "live") {
   available();
   workspace = await Workspace.open(rootPath);
   harness = null;
   projectMode = mode;
+  continuation = null;
   return {
-    project: await workspace.summary(),
+    project: await projectSummary(),
     mode,
     selection: settings.forProject(workspace.root),
   };
@@ -90,7 +103,7 @@ function ipc(name, handler) {
 function register() {
   ipc("boot", async () => ({
     version: app.getVersion(),
-    project: workspace ? await workspace.summary() : null,
+    project: workspace ? await projectSummary() : null,
     state: harness?.snapshot() || null,
     settings: settings.public(),
     selection: workspace
@@ -116,6 +129,26 @@ function register() {
       path.join(app.getPath("userData"), "workspaces"),
     );
     return { ...(await select(target, "offline-demo")), task: demoTask };
+  });
+  ipc("createProject", async (data) => {
+    available();
+    keys(data, ["name"]);
+    return select(await createProject(app.getPath("userData"), data.name));
+  });
+  ipc("continueRun", async (runId) => {
+    available();
+    const saved = await store.load(runId);
+    const selected = await select(saved.root);
+    continuation = continuationFrom(saved);
+    if (saved.connection) {
+      try {
+        selected.selection = settings.selection({
+          providerId: saved.connection.providerId,
+          model: saved.connection.model,
+        });
+      } catch {}
+    }
+    return selected;
   });
   ipc("listFiles", async () => {
     assert(workspace, "ابتدا پروژه را انتخاب کن.");
@@ -186,6 +219,7 @@ function register() {
   ipc("stop", async () => harness?.stop());
   ipc("newTask", async () => {
     available();
+    if (harness?.state) continuation = continuationFrom(harness.state);
     harness = null;
     return true;
   });
@@ -301,7 +335,7 @@ async function init() {
     minWidth: 1100,
     minHeight: 720,
     title: "Milo Code",
-    backgroundColor: "#0e1018",
+    backgroundColor: "#0b0b12",
     show: false,
     icon: path.join(root, "assets/milo.ico"),
     webPreferences: {
@@ -342,13 +376,42 @@ async function init() {
   win.show();
   if (process.env.MILO_SMOKE === "1") {
     const status = await win.webContents.executeJavaScript(
-      'window.milo.boot().then(packet=>({title:document.title,bridge:typeof window.milo?.boot,buttons:document.querySelectorAll("button").length,csp:!!document.querySelector("meta[http-equiv]"),providerProfiles:packet.value.settings.providers.map(p=>p.id),providerOptions:document.querySelector("#run-provider").options.length,modelControl:!!document.querySelector("#run-model")}))',
+      `window.milo.boot().then(packet => {
+        const q = (s) => document.querySelector(s);
+        const sidebar = q(".sidebar").getBoundingClientRect();
+        const main = q(".main-shell").getBoundingClientRect();
+        const heading = q(".welcome h2").getBoundingClientRect();
+        const composer = q("#task-form").getBoundingClientRect();
+        return {
+          title: document.title, bridge: typeof window.milo?.boot,
+          buttons: document.querySelectorAll("button").length,
+          csp: !!q("meta[http-equiv]"),
+          providerProfiles: packet.value.settings.providers.map(p => p.id),
+          providerOptions: q("#run-provider").options.length,
+          modelControl: !!q("#run-model"),
+          sidebarOnRight: sidebar.left >= main.right,
+          workspaceInitiallyHidden: q("#workbench").hidden,
+          newProjectControl: !!q("#new-project"),
+          taskEnabledWithoutProject: !packet.value.project && !q("#task").disabled && !q("#submit-task").disabled,
+          welcomeHeadingClear: heading.height > 0 && heading.bottom <= composer.top,
+          noHorizontalOverflow: document.documentElement.scrollWidth <= window.innerWidth
+        };
+      })`,
     );
     assert(
       status.providerProfiles.length === 4 &&
         status.providerOptions === 4 &&
         status.modelControl,
       "کنترل‌های پرووایدر و مدل در رابط بارگذاری نشدند.",
+    );
+    assert(
+      status.sidebarOnRight &&
+        status.workspaceInitiallyHidden &&
+        status.newProjectControl &&
+        status.taskEnabledWithoutProject &&
+        status.welcomeHeadingClear &&
+        status.noHorizontalOverflow,
+      "چیدمان صفحهٔ شروع یا کنترل‌های ساخت پروژه درست بارگذاری نشدند.",
     );
     if (process.env.MILO_SMOKE_DEMO === "1")
       status.demo = await require("./core/desktop-smoke.cjs").desktopDemo({

@@ -70,6 +70,7 @@ class Harness extends EventEmitter {
     store,
     mode = "live",
     connection = null,
+    continuation = null,
     maxIterations = 28,
     maxCorrections = 6,
     secrets = [],
@@ -82,6 +83,7 @@ class Harness extends EventEmitter {
       store,
       mode,
       connection,
+      continuation,
       maxIterations,
       maxCorrections,
       secrets,
@@ -128,6 +130,7 @@ class Harness extends EventEmitter {
       id: id(),
       mode: this.mode,
       connection: this.connection,
+      continuation: this.continuation,
       root: this.workspace.root,
       task: task.trim(),
       status: "planning",
@@ -158,6 +161,7 @@ class Harness extends EventEmitter {
       const proposal = await this.provider.plan(
         {
           task: this.state.task,
+          continuation: this.continuation,
           project: { name: listing.name, files: listing.files },
           manifests,
           skills: await this.skills.context(),
@@ -200,6 +204,7 @@ class Harness extends EventEmitter {
   async context() {
     return this.store.clean({
       task: this.state.task,
+      continuation: this.state.continuation,
       plan: this.state.plan,
       skills: await this.skills.context(),
       files: (await this.workspace.list(".", 200)).files,

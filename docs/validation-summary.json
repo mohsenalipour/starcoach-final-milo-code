@@ -1,8 +1,11 @@
 {
   "date": "2026-10-20",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "platform": "Windows x64",
-  "coreTests": { "passed": 24, "failed": 0 },
+  "coreTests": {
+    "passed": 31,
+    "failed": 0
+  },
   "providerCatalog": {
     "liveProvider": "AvalAI",
     "liveModelCount": 369,
@@ -25,14 +28,20 @@
     "corrections": 0,
     "exitCode": 0,
     "originalTestsChanged": false,
-    "modelIdentityRecorded": true
+    "modelIdentityRecorded": true,
+    "testedVersion": "1.1.0"
   },
   "installedDesktop": {
     "installer": "NSIS",
     "packaged": true,
     "preloadBridge": true,
     "contentSecurityPolicy": true,
-    "providerProfiles": ["avalai", "metis", "boxapi", "custom"],
+    "providerProfiles": [
+      "avalai",
+      "metis",
+      "boxapi",
+      "custom"
+    ],
     "providerOptions": 4,
     "modelControl": true,
     "demoCompleted": true,
@@ -43,13 +52,51 @@
     "bundledNode": "24.22.0"
   },
   "packageAudit": {
-    "matchingApplicationFiles": 37,
+    "matchingApplicationFiles": 39,
     "privateFiles": 0,
     "configuredKeyIncluded": false
   },
   "installer": {
-    "filename": "Milo-Code-Setup-1.1.0-x64.exe",
-    "bytes": 111553001,
-    "sha256": "8c6458d2071cf17293040fe2a344d946757474870bef6f38f944748ba2c87295"
+    "filename": "Milo-Code-Setup-1.2.0-x64.exe",
+    "bytes": 111558155,
+    "sha256": "37e5e8bfa69234b2b696c1b0e7e261829e5f8e55e77d8ea1bba696e6e85daedc"
+  },
+  "liveCreation": {
+    "provider": "AvalAI",
+    "model": "deepseek-v4.1-flash",
+    "initialFileCount": 0,
+    "status": "completed",
+    "iterations": 7,
+    "corrections": 0,
+    "exitCode": 0,
+    "independentChecks": 7,
+    "filesCreated": [
+      "temperature.cjs",
+      "cli.cjs",
+      "temperature.test.cjs",
+      "README.md"
+    ]
+  },
+  "desktopLayout": {
+    "sidebarOnRight": true,
+    "workspaceInitiallyHidden": true,
+    "newProjectControl": true,
+    "taskEnabledWithoutProject": true,
+    "welcomeHeadingClear": true,
+    "noHorizontalOverflow": true
+  },
+  "nativeUI": {
+    "inspected": [
+      "home",
+      "new-project",
+      "files",
+      "skills",
+      "history-report",
+      "continue-on-same-project"
+    ],
+    "screenshots": [
+      "docs/desktop-home.jpg",
+      "docs/desktop-creation.jpg"
+    ]
   }
 }
